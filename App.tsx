@@ -1,24 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
-
-const Page1 = () => (
-  <View style={[styles.page, { backgroundColor: 'lightgreen' }]}>
-    <Text>Page 1</Text>
-  </View>
-);
-
-const Page2 = () => (
-  <View style={[styles.page, { backgroundColor: 'white' }]}>
-    <Text>Page 2</Text>
-  </View>
-);
-
-const Page3 = () => (
-  <View style={[styles.page, { backgroundColor: 'powderblue' }]}>
-    <Text>Page 3</Text>
-  </View>
-);
+import Page1 from './screens/Page1';
+import Page2 from './screens/Page2';
+import Page3 from './screens/Page3';
 
 const renderScene = SceneMap({
   first: Page1,
@@ -30,9 +15,9 @@ export default function App() {
   const layout = useWindowDimensions();
   const [index, setIndex] = useState(0);
   const [routes] = useState([
-    { key: 'first', title: 'Page 1' },
-    { key: 'second', title: 'Page 2' },
-    { key: 'third', title: 'Page 3' },
+    { key: 'first', title: 'VESC' },
+    { key: 'second', title: 'Camera' },
+    { key: 'third', title: 'GPS' },
   ]);
 
   return (
@@ -47,8 +32,8 @@ export default function App() {
           {...props}
           style={styles.tabBar}
           indicatorStyle={{ backgroundColor: 'black' }}
-          labelStyle={{ color: 'black', fontWeight: 'bold' }}
-          activeColor="black"
+          labelStyle={{ color: 'white', fontWeight: 'bold' }}
+          activeColor="white"
           inactiveColor="gray"
         />
       )}
@@ -57,13 +42,8 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   tabBar: {
-    backgroundColor: 'white',
+    backgroundColor: 'black',
     position: 'absolute',
     bottom: 0,
     left: 0,
