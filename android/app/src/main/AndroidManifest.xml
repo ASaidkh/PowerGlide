@@ -2,6 +2,27 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Bluetooth Permissions (Support for Android 11 and below) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+
+    <!-- Bluetooth Permissions (Required for Android 12 and later) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+
+    <!-- Foreground service permission (scanning on Android 10+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- Camera Permission -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Microphone Permission -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Location Permissions (Bluetooth scanning on Android < 11 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
       android:name=".MainApplication"
       android:label="@string/app_name"
