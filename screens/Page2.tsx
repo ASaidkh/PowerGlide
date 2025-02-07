@@ -1,46 +1,56 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+'use client';
+
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Camera, useCameraDevices } from 'react-native-vision-camera';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
 const Page2 = () => {
-  const [hasPermission, setHasPermission] = useState(false);
-  const [cameraRef, setCameraRef] = useState(null);
-
+  const [showCamera, setShowCamera] = useState(false);
   const devices = useCameraDevices();
-  const device = devices.front; // You can choose front or back camera
+  const frontCamera = devices.front;
+  const cameraRef = useRef(null);
 
-  const handlePress = async () => {
-    // Request permissions
-    const cameraPermission = await request(PERMISSIONS.ANDROID.CAMERA);
-    const microphonePermission = await request(PERMISSIONS.ANDROID.RECORD_AUDIO);
+  const requestPermissionsAndOpenCamera = useCallback(async () => {
+    try {
+      const cameraPermission = await request(PERMISSIONS.ANDROID.CAMERA);
+      const microphonePermission = await request(PERMISSIONS.ANDROID.RECORD_AUDIO);
 
-    if (cameraPermission === RESULTS.GRANTED && microphonePermission === RESULTS.GRANTED) {
-      setHasPermission(true);
-    } else {
-      alert('Permissions not granted. Please enable camera and microphone permissions.');
+      if (cameraPermission === RESULTS.GRANTED && microphonePermission === RESULTS.GRANTED) {
+        setShowCamera(true);
+      } else {
+        Alert.alert('Permission Required', 'Camera & microphone permissions are required to use this feature.');
+      }
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+      Alert.alert('Error', 'Failed to request permissions. Please try again.');
     }
-  };
+  }, []);
+
+  const handleOpenCamera = useCallback(() => {
+    if (frontCamera) {
+      requestPermissionsAndOpenCamera();
+    } else {
+      Alert.alert('Camera Not Available', 'Front camera is not available on this device.');
+    }
+  }, [frontCamera, requestPermissionsAndOpenCamera]);
 
   return (
-    <View style={[styles.page, { backgroundColor: 'white' }]}>
-      <Text style={styles.title}>Start Glide!</Text>
-
-      {/* Button */}
-      <TouchableOpacity style={styles.button} onPress={handlePress}>
-        <Text style={styles.buttonText}>Open Camera & Microphone</Text>
-      </TouchableOpacity>
-
-      {/* Camera view */}
-      {hasPermission && device != null ? (
+    <View style={styles.page}>
+      {showCamera && frontCamera ? (
         <Camera
+          ref={cameraRef}
           style={styles.camera}
-          device={device}
+          device={frontCamera}
           isActive={true}
-          ref={ref => setCameraRef(ref)}
         />
       ) : (
-        <Text>No camera access</Text>
+        <>
+          <Text style={styles.title}>Start Glide!</Text>
+          <TouchableOpacity style={styles.button} onPress={handleOpenCamera}>
+            <Text style={styles.buttonText}>Open Camera & Microphone</Text>
+          </TouchableOpacity>
+        </>
       )}
     </View>
   );
@@ -51,30 +61,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'black',
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
     fontFamily: 'Arial',
-    color: 'black',
+    color: 'white',
   },
   button: {
-    backgroundColor: 'blue', // Button color
-    paddingVertical: 10, // Vertical padding for the button
-    paddingHorizontal: 20, // Horizontal padding for the button
-    borderRadius: 5, // Optional: Rounded corners
-    marginBottom: 20, // Add space between button and camera
+    backgroundColor: 'blue',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 5,
+    marginTop: 20,
   },
   buttonText: {
-    color: 'white', // Text color
-    fontSize: 16, // Font size of the button text
-    fontWeight: 'bold', // Make the text bold
-    textAlign: 'center', // Center the text within the button
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   camera: {
     width: '100%',
-    height: '60%',
-    marginTop: 20,
+    height: '100%',
   },
 });
 
