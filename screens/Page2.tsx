@@ -35,23 +35,11 @@ const Page2 = () => {
     }
   };
 
-  // Handle when the app state changes (background/foreground)
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState) => {
-      if (nextAppState === 'active' && hasPermission) {
-        setShowCamera(true);
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription.remove();
-  }, [hasPermission]);
-
   // Handle button press to open camera
   const handleOpenCamera = async () => {
     await requestPermissions();
-    if (hasPermission) {
-      setShowCamera(true);
+    if (hasPermission && frontCamera) {
+      setShowCamera(true); // Set showCamera only after permissions are confirmed
     }
   };
 
