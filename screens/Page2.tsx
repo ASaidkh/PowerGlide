@@ -1,34 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, AppState } from 'react-native';
-import { Camera, useCameraDevices, getCameraDevice } from 'react-native-vision-camera';
-import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const Page2 = () => {
   const [hasPermission, setHasPermission] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const devices = useCameraDevices();
+  const device = devices?.front || devices?.back; // const device = devices.front;
   const cameraRef = useRef(null);
 
-  const frontCamera = getCameraDevice(devices, 'front');  // Get the front camera using getCameraDevice
+  useEffect(() => {
+    console.log('Devices:', devices);
+    if (devices && devices.front) {
+      console.log('Front device:', devices.front);
+    } else {
+      console.log('Front camera not available');
+    }
+  }, [devices]);
 
-  // Function to check and request permissions
   const requestPermissions = async () => {
     try {
-      const cameraStatus = await check(PERMISSIONS.ANDROID.CAMERA);
-      const micStatus = await check(PERMISSIONS.ANDROID.RECORD_AUDIO);
+      const cameraStatus = await Camera.requestCameraPermission();
+      const micStatus = await Camera.requestMicrophonePermission();
 
-      if (cameraStatus === RESULTS.GRANTED && micStatus === RESULTS.GRANTED) {
+      if (cameraStatus === 'granted' && micStatus === 'granted') {
         setHasPermission(true);
       } else {
-        const newCameraPermission = await request(PERMISSIONS.ANDROID.CAMERA);
-        const newMicPermission = await request(PERMISSIONS.ANDROID.RECORD_AUDIO);
-
-        if (newCameraPermission === RESULTS.GRANTED && newMicPermission === RESULTS.GRANTED) {
-          setHasPermission(true);
-        } else {
-          Alert.alert('Permission Required', 'Camera & microphone permissions are required to use this feature.');
-        }
+        Alert.alert('Permission Required', 'Camera & microphone permissions are required to use this feature.');
       }
     } catch (error) {
       console.error('Error requesting permissions:', error);
@@ -36,32 +35,27 @@ const Page2 = () => {
     }
   };
 
-  // Handle button press to open camera
   const handleOpenCamera = async () => {
     await requestPermissions();
-    if (hasPermission && frontCamera) {
-      setShowCamera(true); // Set showCamera only after permissions are confirmed
+    if (hasPermission && device) {
+      setShowCamera(true);
     }
   };
 
   return (
     <View style={styles.page}>
-      {showCamera && frontCamera ? (
+      {showCamera && device ? (
         <Camera
           ref={cameraRef}
           style={styles.camera}
-          device={frontCamera}
+          device={device}
           isActive={true}
+          format={device.formats[0]}
         />
       ) : (
         <>
-          {/* Wheelchair Icon */}
           <Icon name="wheelchair" size={75} color="white" style={styles.icon} />
-
-          {/* Title */}
           <Text style={styles.title}>Start Glide!</Text>
-
-          {/* Button */}
           <TouchableOpacity style={styles.button} onPress={handleOpenCamera}>
             <Text style={styles.buttonText}>Open Camera & Microphone</Text>
           </TouchableOpacity>
@@ -79,7 +73,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
   },
   icon: {
-    marginBottom: 10, // Space between the icon and title
+    marginBottom: 10,
   },
   title: {
     fontSize: 22,
