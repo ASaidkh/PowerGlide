@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, AppState } from 'react-native';
-import { Camera, useCameraDevices } from 'react-native-vision-camera';
+import { Camera, useCameraDevices, getCameraDevice } from 'react-native-vision-camera';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
@@ -8,8 +8,9 @@ const Page2 = () => {
   const [hasPermission, setHasPermission] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const devices = useCameraDevices();
-  const frontCamera = devices.front;
   const cameraRef = useRef(null);
+
+  const frontCamera = getCameraDevice(devices, 'front');  // Get the front camera using getCameraDevice
 
   // Function to check and request permissions
   const requestPermissions = async () => {
