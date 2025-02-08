@@ -1,50 +1,157 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import { BleManager } from 'react-native-ble-plx';
 
-const Page1 = () => (
-  <View style={[styles.page, { backgroundColor: 'lightgreen' }]}>
-    {/* Connection Link Icon */}
-    <Icon name="microchip" size={75} color="black" style={styles.icon} />
+const Page1 = () => {
+  const [isScanning, setIsScanning] = useState(false);
+  const [devices, setDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null); // To keep track of selected device
+  const bleManager = new BleManager({
+    isBackgroundEnabled: true, // Enable background BLE support
+  });
 
-    {/* Title */}
-    <Text style={styles.title}>Connect to VESC</Text>
+  // Request Bluetooth permission and start scanning if granted
+  const requestBluetoothPermission = async () => {
+    try {
+      const permission = await request(PERMISSIONS.ANDROID.BLUETOOTH_CONNECT);
 
-    {/* Button */}
-    <TouchableOpacity style={styles.button} onPress={() => { /* Handle Bluetooth request here */ }}>
-      <Text style={styles.buttonText}>Request Bluetooth Access</Text>
-    </TouchableOpacity>
-  </View>
-);
+      if (permission === RESULTS.GRANTED) {
+        // Permission granted, start scanning for devices
+        startScanning();
+      } else {
+        Alert.alert('Permission Denied', 'Bluetooth permission is required to scan for devices.');
+      }
+    } catch (error) {
+      console.error('Error requesting Bluetooth permission:', error);
+      Alert.alert('Permission Error', 'Failed to request Bluetooth permission.');
+    }
+  };
+
+  // Start scanning for Bluetooth devices
+  const startScanning = () => {
+    setDevices([]); // Reset devices list before starting the scan
+    setIsScanning(true);
+
+    bleManager.startDeviceScan(null, null, (error, device) => {
+      if (error) {
+        console.error('Error scanning for devices:', error);
+        setIsScanning(false);
+        return;
+      }
+
+      if (device && device.name) {
+        // Add the device to the list of detected devices
+        setDevices((prevDevices) => {
+          if (!prevDevices.find(d => d.id === device.id)) {
+            return [...prevDevices, device]; // Only add unique devices
+          }
+          return prevDevices;
+        });
+      }
+    });
+
+    // Stop scanning after a certain period (e.g., 10 seconds)
+    setTimeout(() => {
+      bleManager.stopDeviceScan();
+      setIsScanning(false);
+    }, 10000); // 10 seconds
+  };
+
+  // Handle device selection
+  const handleDeviceSelect = (device) => {
+    setSelectedDevice(device);
+    Alert.alert('Device Selected', `You selected: ${device.name}`);
+  };
+
+  return (
+    <View style={[styles.page, { backgroundColor: 'lightgreen' }]}>
+      {/* Connection Link Icon */}
+      <Icon name="microchip" size={75} color="black" style={styles.icon} />
+
+      {/* Title */}
+      <Text style={styles.title}>Connect to VESC</Text>
+
+      {/* Button */}
+      <TouchableOpacity style={styles.button} onPress={requestBluetoothPermission}>
+        <Text style={styles.buttonText}>Request Bluetooth Access</Text>
+      </TouchableOpacity>
+
+      {/* Show scanning status */}
+      {isScanning && <Text style={styles.scanningText}>Scanning for devices...</Text>}
+
+      {/* Show list of detected devices */}
+      {!isScanning && devices.length > 0 && (
+        <FlatList
+          data={devices}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.deviceItem}
+              onPress={() => handleDeviceSelect(item)}>
+              <Text style={styles.deviceText}>{item.name || 'Unnamed device'}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+
+      {/* Show message if no devices found */}
+      {!isScanning && devices.length === 0 && <Text style={styles.noDevicesText}>No devices found</Text>}
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20, // Optional: Add some padding
+    padding: 20,
   },
   icon: {
-    marginBottom: 10, // Space between the icon and title
+    marginBottom: 10,
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
     fontFamily: 'Arial',
     color: 'black',
-    marginBottom: 20, // Adds space between the title and the button
+    marginBottom: 20,
   },
   button: {
-    backgroundColor: 'blue', // Button color
-    paddingVertical: 10, // Vertical padding for the button
-    paddingHorizontal: 20, // Horizontal padding for the button
-    borderRadius: 5, // Optional: Rounded corners
+    backgroundColor: 'blue',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
   },
   buttonText: {
-    color: 'white', // Text color
-    fontSize: 16, // Font size of the button text
-    fontWeight: 'bold', // Make the text bold
-    textAlign: 'center', // Center the text within the button
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  scanningText: {
+    marginTop: 20,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  deviceItem: {
+    backgroundColor: 'lightblue',
+    padding: 10,
+    marginTop: 10,
+    borderRadius: 5,
+    width: '100%',
+  },
+  deviceText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  noDevicesText: {
+    marginTop: 20,
+    fontSize: 16,
+    color: 'black',
   },
 });
 
