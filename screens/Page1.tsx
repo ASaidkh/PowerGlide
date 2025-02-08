@@ -1,9 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const Page1 = () => (
   <View style={[styles.page, { backgroundColor: 'lightgreen' }]}>
+    {/* Connection Link Icon */}
+    <Icon name="microchip" size={75} color="black" style={styles.icon} />
+
+    {/* Title */}
     <Text style={styles.title}>Connect to VESC</Text>
+
     {/* Button */}
     <TouchableOpacity style={styles.button} onPress={() => { /* Handle Bluetooth request here */ }}>
       <Text style={styles.buttonText}>Request Bluetooth Access</Text>
@@ -17,6 +23,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20, // Optional: Add some padding
+  },
+  icon: {
+    marginBottom: 10, // Space between the icon and title
   },
   title: {
     fontSize: 22,

@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Camera, useCameraDevices } from 'react-native-vision-camera';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const Page2 = () => {
   const [showCamera, setShowCamera] = useState(false);
@@ -46,7 +47,13 @@ const Page2 = () => {
         />
       ) : (
         <>
+          {/* Wheelchair Icon */}
+          <Icon name="wheelchair" size={75} color="white" style={styles.icon} />
+
+          {/* Title */}
           <Text style={styles.title}>Start Glide!</Text>
+
+          {/* Button */}
           <TouchableOpacity style={styles.button} onPress={handleOpenCamera}>
             <Text style={styles.buttonText}>Open Camera & Microphone</Text>
           </TouchableOpacity>
@@ -62,6 +69,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'black',
+  },
+  icon: {
+    marginBottom: 10, // Space between the icon and title
   },
   title: {
     fontSize: 22,
