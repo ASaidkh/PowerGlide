@@ -4,22 +4,24 @@ import Icon from 'react-native-vector-icons/FontAwesome5';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { BleManager } from 'react-native-ble-plx';
 
+// Initialize BleManager with background support enabled
+const bleManager = new BleManager({
+  isBackgroundEnabled: true,
+});
+
 const Page1 = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [devices, setDevices] = useState([]);
-  const [selectedDevice, setSelectedDevice] = useState(null); // To keep track of selected device
-  const bleManager = new BleManager({
-    isBackgroundEnabled: true, // Enable background BLE support
-  });
+  const [selectedDevice, setSelectedDevice] = useState(null);
 
   // Request Bluetooth permission and start scanning if granted
   const requestBluetoothPermission = async () => {
     try {
       const permission = await request(PERMISSIONS.ANDROID.BLUETOOTH_CONNECT);
+      const scanPermission = await request(PERMISSIONS.ANDROID.BLUETOOTH_SCAN);
 
-      if (permission === RESULTS.GRANTED) {
-        // Permission granted, start scanning for devices
-        startScanning();
+      if (permission === RESULTS.GRANTED && scanPermission === RESULTS.GRANTED) {
+        startScanning(); // Start scanning for devices
       } else {
         Alert.alert('Permission Denied', 'Bluetooth permission is required to scan for devices.');
       }
@@ -31,7 +33,7 @@ const Page1 = () => {
 
   // Start scanning for Bluetooth devices
   const startScanning = () => {
-    setDevices([]); // Reset devices list before starting the scan
+    setDevices([]); // Reset devices list before starting scan
     setIsScanning(true);
 
     bleManager.startDeviceScan(null, null, (error, device) => {
@@ -42,10 +44,9 @@ const Page1 = () => {
       }
 
       if (device && device.name) {
-        // Add the device to the list of detected devices
         setDevices((prevDevices) => {
           if (!prevDevices.find(d => d.id === device.id)) {
-            return [...prevDevices, device]; // Only add unique devices
+            return [...prevDevices, device]; // Add only unique devices
           }
           return prevDevices;
         });
@@ -67,21 +68,16 @@ const Page1 = () => {
 
   return (
     <View style={[styles.page, { backgroundColor: 'lightgreen' }]}>
-      {/* Connection Link Icon */}
       <Icon name="microchip" size={75} color="black" style={styles.icon} />
-
-      {/* Title */}
       <Text style={styles.title}>Connect to VESC</Text>
-
-      {/* Button */}
+      
+      {/* Request Bluetooth Access Button */}
       <TouchableOpacity style={styles.button} onPress={requestBluetoothPermission}>
         <Text style={styles.buttonText}>Request Bluetooth Access</Text>
       </TouchableOpacity>
 
-      {/* Show scanning status */}
       {isScanning && <Text style={styles.scanningText}>Scanning for devices...</Text>}
 
-      {/* Show list of detected devices */}
       {!isScanning && devices.length > 0 && (
         <FlatList
           data={devices}
@@ -96,7 +92,6 @@ const Page1 = () => {
         />
       )}
 
-      {/* Show message if no devices found */}
       {!isScanning && devices.length === 0 && <Text style={styles.noDevicesText}>No devices found</Text>}
     </View>
   );
@@ -115,7 +110,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    fontFamily: 'Arial',
     color: 'black',
     marginBottom: 20,
   },
