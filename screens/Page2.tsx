@@ -1,142 +1,120 @@
-"use client"
-
-import { useState, useCallback, useRef, useEffect } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking } from "react-native"
-import { Camera, useCameraDevices } from "react-native-vision-camera"
-import Icon from "react-native-vector-icons/FontAwesome5"
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, AppState } from 'react-native';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
+import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const Page2 = () => {
-  const [hasPermission, setHasPermission] = useState(false)
-  const [isCameraActive, setIsCameraActive] = useState(false)
-  const cameraRef = useRef(null)
-  const devices = useCameraDevices()
-  const [frontCamera, setFrontCamera] = useState(null)
+  const [hasPermission, setHasPermission] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const devices = useCameraDevices();
+  const frontCamera = devices.front;
+  const cameraRef = useRef(null);
 
-  useEffect(() => {
-    const getFrontCamera = () => {
-      const availableDevices = Object.values(devices)
-      const frontCameraDevice = availableDevices.find((device) => device.position === "front")
-      setFrontCamera(frontCameraDevice)
-    }
-
-    getFrontCamera()
-  }, [devices])
-
-  const requestPermissionsAndOpenCamera = useCallback(async () => {
+  // Function to check and request permissions
+  const requestPermissions = async () => {
     try {
-      const cameraPermission = await Camera.requestCameraPermission()
-      const microphonePermission = await Camera.requestMicrophonePermission()
+      const cameraStatus = await check(PERMISSIONS.ANDROID.CAMERA);
+      const micStatus = await check(PERMISSIONS.ANDROID.RECORD_AUDIO);
 
-      console.log("Camera permission:", cameraPermission)
-      console.log("Microphone permission:", microphonePermission)
-
-      if (cameraPermission === "authorized" && microphonePermission === "authorized") {
-        setHasPermission(true)
-        setIsCameraActive(true)
-      } else if (cameraPermission === "denied" || microphonePermission === "denied") {
-        Alert.alert(
-          "Permission Denied",
-          "Camera and microphone permissions are required. Please enable them in your device settings.",
-          [
-            { text: "OK", onPress: () => console.log("OK Pressed") },
-            { text: "Open Settings", onPress: () => Linking.openSettings() },
-          ],
-        )
+      if (cameraStatus === RESULTS.GRANTED && micStatus === RESULTS.GRANTED) {
+        setHasPermission(true);
       } else {
-        Alert.alert("Permission Required", "Camera & microphone permissions are required to use this feature.")
+        const newCameraPermission = await request(PERMISSIONS.ANDROID.CAMERA);
+        const newMicPermission = await request(PERMISSIONS.ANDROID.RECORD_AUDIO);
+
+        if (newCameraPermission === RESULTS.GRANTED && newMicPermission === RESULTS.GRANTED) {
+          setHasPermission(true);
+        } else {
+          Alert.alert('Permission Required', 'Camera & microphone permissions are required to use this feature.');
+        }
       }
     } catch (error) {
-      console.error("Error requesting permissions:", error)
-      Alert.alert("Error", "Failed to request permissions. Please try again.")
+      console.error('Error requesting permissions:', error);
+      Alert.alert('Error', 'Failed to request permissions. Please try again.');
     }
-  }, [])
+  };
 
+  // Handle when the app state changes (background/foreground)
   useEffect(() => {
-    const checkAndActivateCamera = async () => {
-      const cameraPermission = await Camera.getCameraPermissionStatus()
-      const microphonePermission = await Camera.getMicrophonePermissionStatus()
-
-      console.log("Current camera permission:", cameraPermission)
-      console.log("Current microphone permission:", microphonePermission)
-
-      if (cameraPermission === "authorized" && microphonePermission === "authorized" && frontCamera) {
-        setHasPermission(true)
-        setIsCameraActive(true)
-      } else {
-        setHasPermission(false)
-        setIsCameraActive(false)
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === 'active' && hasPermission) {
+        setShowCamera(true);
       }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [hasPermission]);
+
+  // Handle button press to open camera
+  const handleOpenCamera = async () => {
+    await requestPermissions();
+    if (hasPermission) {
+      setShowCamera(true);
     }
-
-    checkAndActivateCamera()
-  }, [frontCamera])
-
-  if (!frontCamera) {
-    return (
-      <View style={styles.page}>
-        <Text style={styles.title}>Camera not available</Text>
-        <Text style={styles.subtitle}>Initializing camera...</Text>
-      </View>
-    )
-  }
+  };
 
   return (
     <View style={styles.page}>
-      {isCameraActive && frontCamera ? (
-        <Camera ref={cameraRef} style={styles.camera} device={frontCamera} isActive={true} />
+      {showCamera && frontCamera ? (
+        <Camera
+          ref={cameraRef}
+          style={styles.camera}
+          device={frontCamera}
+          isActive={true}
+        />
       ) : (
         <>
+          {/* Wheelchair Icon */}
           <Icon name="wheelchair" size={75} color="white" style={styles.icon} />
+
+          {/* Title */}
           <Text style={styles.title}>Start Glide!</Text>
-          <TouchableOpacity style={styles.button} onPress={requestPermissionsAndOpenCamera}>
+
+          {/* Button */}
+          <TouchableOpacity style={styles.button} onPress={handleOpenCamera}>
             <Text style={styles.buttonText}>Open Camera & Microphone</Text>
           </TouchableOpacity>
         </>
       )}
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "black",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+  },
+  icon: {
+    marginBottom: 10, // Space between the icon and title
   },
   title: {
     fontSize: 22,
-    fontWeight: "bold",
-    fontFamily: "Arial",
-    color: "white",
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "white",
-    textAlign: "center",
-    marginTop: 10,
+    fontWeight: 'bold',
+    fontFamily: 'Arial',
+    color: 'white',
   },
   button: {
-    backgroundColor: "blue",
+    backgroundColor: 'blue',
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 5,
     marginTop: 20,
   },
   buttonText: {
-    color: "white",
+    color: 'white',
     fontSize: 16,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   camera: {
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: '100%',
   },
-  icon: {
-    marginBottom: 20,
-  },
-})
+});
 
-export default Page2
+export default Page2;
