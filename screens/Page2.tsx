@@ -1,56 +1,46 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Camera, useCameraDevices } from 'react-native-vision-camera';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const Page2 = () => {
-  const [hasPermission, setHasPermission] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const devices = useCameraDevices();
-  const device = devices?.front || devices?.back; // const device = devices.front;
-  const cameraRef = useRef(null);
-
-  useEffect(() => {
-    console.log('Devices:', devices);
-    if (devices && devices.front) {
-      console.log('Front device:', devices.front);
-    } else {
-      console.log('Front camera not available');
-    }
-  }, [devices]);
-
-  const requestPermissions = async () => {
-    try {
-      const cameraStatus = await Camera.requestCameraPermission();
-      const micStatus = await Camera.requestMicrophonePermission();
-
-      if (cameraStatus === 'granted' && micStatus === 'granted') {
-        setHasPermission(true);
-      } else {
-        Alert.alert('Permission Required', 'Camera & microphone permissions are required to use this feature.');
-      }
-    } catch (error) {
-      console.error('Error requesting permissions:', error);
-      Alert.alert('Error', 'Failed to request permissions. Please try again.');
-    }
-  };
+  const device = useCameraDevice('front'); // Get the front camera
+  const { hasPermission, requestPermission } = useCameraPermission(); // Use built-in permission hook
+  const [showCamera, setShowCamera] = React.useState(false);
 
   const handleOpenCamera = async () => {
-    await requestPermissions();
-    if (hasPermission && device) {
+    const granted = await requestPermission(); // Request camera & microphone permissions
+    if (granted) {
       setShowCamera(true);
     }
   };
 
+  if (!hasPermission) {
+    return (
+      <View style={styles.page}>
+        <Text style={styles.title}>Camera Permission Required</Text>
+        <TouchableOpacity style={styles.button} onPress={handleOpenCamera}>
+          <Text style={styles.buttonText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!device) {
+    return (
+      <View style={styles.page}>
+        <Text style={styles.title}>No Front Camera Found</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.page}>
-      {showCamera && device ? (
+      {showCamera ? (
         <Camera
-          ref={cameraRef}
-          style={styles.camera}
+          style={StyleSheet.absoluteFill}
           device={device}
           isActive={true}
-          format={device.formats[0]}
         />
       ) : (
         <>
@@ -80,6 +70,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: 'Arial',
     color: 'white',
+    textAlign: 'center',
   },
   button: {
     backgroundColor: 'blue',
@@ -93,10 +84,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-  },
-  camera: {
-    width: '100%',
-    height: '100%',
   },
 });
 
