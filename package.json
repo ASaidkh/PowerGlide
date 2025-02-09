@@ -23,7 +23,8 @@
     "react-native-screens": "^3.34.0",
     "react-native-tab-view": "^4.0.5",
     "react-native-vector-icons": "^10.2.0",
-    "react-native-vision-camera": "^4.6.3"
+    "react-native-vision-camera": "^4.6.3",
+    "react-native-worklets-core": "^1.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
