@@ -1,15 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking } from 'react-native';
-import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission } from 'react-native-vision-camera';
+import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission, useFrameProcessor } from 'react-native-vision-camera';
+import { FaceDetector, Face } from 'react-native-vision-camera-face-detector';
+import Reanimated, { useSharedValue, runOnJS } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
+const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);
+
 const Page2 = () => {
-  const device = useCameraDevice('front'); // Get the front camera
+  const device = useCameraDevice('front');
   const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
   const { hasPermission: hasMicPermission, requestPermission: requestMicPermission } = useMicrophonePermission();
-  const [showCamera, setShowCamera] = React.useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [faces, setFaces] = useState<Face[]>([]);
+  const [headDirection, setHeadDirection] = useState('Neutral');
 
-  const handleOpenCamera = async () => {
+  const faceSharedValue = useSharedValue<Face[]>([]);
+
+  useEffect(() => {
+    requestPermissions();
+  }, []);
+
+  const requestPermissions = async () => {
     const cameraGranted = await requestCameraPermission();
     const micGranted = await requestMicPermission();
 
@@ -24,27 +36,51 @@ const Page2 = () => {
     }
   };
 
-  if (!device) {
-    return (
-      <View style={styles.page}>
-        <Text style={styles.title}>No Front Camera Found</Text>
-      </View>
-    );
-  }
+  const processFaces = useCallback((detectedFaces: Face[]) => {
+    setFaces(detectedFaces);
+
+    if (detectedFaces.length > 0) {
+      const face = detectedFaces[0];
+      // Your existing logic for determining head direction
+      // ...
+    }
+  }, []);
+
+  const frameProcessor = useFrameProcessor((frame) => {
+    'worklet'; 
+    const detectedFaces = FaceDetector.detectFaces(frame);
+    runOnJS(processFaces)(detectedFaces);
+  }, []);
+  
+
+  if (device == null) return <Text>No camera device</Text>;
 
   return (
     <View style={styles.page}>
       {showCamera ? (
-        <Camera style={StyleSheet.absoluteFill} device={device} isActive={true} />
+        <ReanimatedCamera
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={true}
+          frameProcessor={frameProcessor}
+          frameProcessorFps={5}
+          onError={(error) => {
+            console.error("Camera error:", error);
+          }}
+        />
       ) : (
         <>
           <Icon name="wheelchair" size={75} color="white" style={styles.icon} />
           <Text style={styles.title}>Start Glide!</Text>
-          <TouchableOpacity style={styles.button} onPress={handleOpenCamera}>
+          <TouchableOpacity style={styles.button} onPress={requestPermissions}>
             <Text style={styles.buttonText}>Open Camera & Microphone</Text>
           </TouchableOpacity>
         </>
       )}
+
+      <View style={styles.headDirection}>
+        <Text style={styles.headDirectionText}>Face: {headDirection}</Text>
+      </View>
     </View>
   );
 };
