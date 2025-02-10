@@ -159,7 +159,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   headDirection: {
-    marginTop: 20,
+    position: 'absolute',  // Position absolutely relative to the camera
+    top: 50,  // Moves it towards the top of the screen
+    alignSelf: 'center',  // Center horizontally
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Slight background for readability
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
   },
   headDirectionText: {
     color: 'white',
