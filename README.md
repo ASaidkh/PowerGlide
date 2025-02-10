@@ -79,4 +79,4 @@ To learn more about React Native, take a look at the following resources:
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
 
 
-**EMOTIV Client Secret** xPinjVvXUhcQg4OXS4hwsujPFFPDDiqxE1gDMMA8l3kYGpU7VWOqIYD5gbIMPWZK1G6oZ8rUpju2TSi6NnXcAm8EJfz6PAd0fBsKU1MJHDKzLwwPEcqGTpTbmyYgb61P
+**EMOTIV Client Secret** (Reta) xPinjVvXUhcQg4OXS4hwsujPFFPDDiqxE1gDMMA8l3kYGpU7VWOqIYD5gbIMPWZK1G6oZ8rUpju2TSi6NnXcAm8EJfz6PAd0fBsKU1MJHDKzLwwPEcqGTpTbmyYgb61P

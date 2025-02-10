@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// Turning Right too heavy
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission, useFrameProcessor } from 'react-native-vision-camera';
-import { FaceDetector, Face } from 'react-native-vision-camera-face-detector';
-import Reanimated, { useSharedValue, runOnJS } from 'react-native-reanimated';
+import { useFaceDetector, Face, FaceDetectionOptions } from 'react-native-vision-camera-face-detector';
+import { Worklets } from 'react-native-worklets-core'; // Import Worklets
+import Reanimated from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);
@@ -14,8 +17,16 @@ const Page2 = () => {
   const [showCamera, setShowCamera] = useState(false);
   const [faces, setFaces] = useState<Face[]>([]);
   const [headDirection, setHeadDirection] = useState('Neutral');
+  const [previousDirection, setPreviousDirection] = useState('Neutral');
+  const [lastLoggedTime, setLastLoggedTime] = useState(0);
 
-  const faceSharedValue = useSharedValue<Face[]>([]);
+  const faceDetectionOptions = useRef<FaceDetectionOptions>({
+    mode: 'accurate',
+    detectLandmarks: 'none',
+    runClassifications: 'all',
+  }).current;
+
+  const { detectFaces } = useFaceDetector(faceDetectionOptions);
 
   useEffect(() => {
     requestPermissions();
@@ -36,22 +47,54 @@ const Page2 = () => {
     }
   };
 
-  const processFaces = useCallback((detectedFaces: Face[]) => {
+  // Use Worklets to handle face detection
+  const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: Face[]) => {
     setFaces(detectedFaces);
 
     if (detectedFaces.length > 0) {
       const face = detectedFaces[0];
-      // Your existing logic for determining head direction
-      // ...
-    }
-  }, []);
+      const { x, width } = face.bounds;
 
+      // Normalize x to a range of 0 to 1 based on the width of the camera view
+      const normalizedX = (x + width / 2) / width;
+
+      // Define thresholds for left, neutral, and right
+      const LEFT_THRESHOLD = 0.3;
+      const RIGHT_THRESHOLD = 0.7;
+      const NEUTRAL_THRESHOLD = 0.5;
+
+      let newDirection = 'Neutral';
+
+      if (normalizedX < LEFT_THRESHOLD) {
+        newDirection = 'Turning Left';
+      } else if (normalizedX > RIGHT_THRESHOLD) {
+        newDirection = 'Turning Right';
+      } else {
+        newDirection = 'Neutral';
+      }
+
+      // Only log if the direction changes or every 15 seconds
+      const currentTime = Date.now();
+      const timeDifference = currentTime - lastLoggedTime;
+
+      // Check if direction has changed or if 15 seconds have passed since last log
+      if ((newDirection !== previousDirection && newDirection !== 'Neutral') || timeDifference >= 15000) {
+        setHeadDirection(newDirection);
+        setPreviousDirection(newDirection);
+        setLastLoggedTime(currentTime);
+
+        // Log the new direction only when it changes or after 15 seconds
+        console.log(`Face Direction: ${newDirection}`);
+      }
+    }
+  });
+
+  // Frame processor
   const frameProcessor = useFrameProcessor((frame) => {
-    'worklet'; 
-    const detectedFaces = FaceDetector.detectFaces(frame);
-    runOnJS(processFaces)(detectedFaces);
-  }, []);
-  
+    'worklet'; // Indicating this is a worklet function
+    const detectedFaces = detectFaces(frame);
+    handleDetectedFaces(detectedFaces); // Process detected faces on the JS thread
+  }, [handleDetectedFaces]);
 
   if (device == null) return <Text>No camera device</Text>;
 
@@ -65,7 +108,7 @@ const Page2 = () => {
           frameProcessor={frameProcessor}
           frameProcessorFps={5}
           onError={(error) => {
-            console.error("Camera error:", error);
+            console.error('Camera error:', error);
           }}
         />
       ) : (
@@ -114,6 +157,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  headDirection: {
+    marginTop: 20,
+  },
+  headDirectionText: {
+    color: 'white',
+    fontSize: 18,
   },
 });
 
