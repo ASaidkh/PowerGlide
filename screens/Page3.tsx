@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, PermissionsAndroid, PanResponder, Animated } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const Page3 = () => {
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
-  const joystickPosition = new Animated.ValueXY({ x: 0, y: 0 });
+  const joystickPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
   const requestLocationPermission = async () => {
     try {
@@ -28,19 +28,31 @@ const Page3 = () => {
     }
   };
 
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderMove: Animated.event([
-      null,
-      { dx: joystickPosition.x, dy: joystickPosition.y },
-    ], { useNativeDriver: false }),
-    onPanResponderRelease: () => {
-      Animated.spring(joystickPosition, {
-        toValue: { x: 0, y: 0 },
-        useNativeDriver: false,
-      }).start();
-    },
-  });
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gestureState) => {
+        const { dx, dy } = gestureState;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const maxDistance = 75; // Radius of the outer circle minus radius of the joystick
+
+        if (distance > maxDistance) {
+          const angle = Math.atan2(dy, dx);
+          const x = maxDistance * Math.cos(angle);
+          const y = maxDistance * Math.sin(angle);
+          joystickPosition.setValue({ x, y });
+        } else {
+          joystickPosition.setValue({ x: dx, y: dy });
+        }
+      },
+      onPanResponderRelease: () => {
+        Animated.spring(joystickPosition, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: false,
+        }).start();
+      },
+    })
+  ).current;
 
   if (!hasLocationPermission) {
     return (
@@ -59,9 +71,15 @@ const Page3 = () => {
       <View style={styles.joystickContainer}>
         <View style={styles.outerCircle}>
           <Animated.View
-            style={[styles.joystick, {
-              transform: [{ translateX: joystickPosition.x }, { translateY: joystickPosition.y }],
-            }]}
+            style={[
+              styles.joystick,
+              {
+                transform: [
+                  { translateX: joystickPosition.x },
+                  { translateY: joystickPosition.y },
+                ],
+              },
+            ]}
             {...panResponder.panHandlers}
           >
             <Icon name="radio-button-checked" size={50} color="white" />
@@ -103,7 +121,7 @@ const styles = StyleSheet.create({
   },
   joystickContainer: {
     position: 'absolute',
-    bottom: 100,                 // Moves the joystick and circle position up and down
+    bottom: 100,
     justifyContent: 'center',
     alignItems: 'center',
   },
