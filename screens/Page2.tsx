@@ -1,3 +1,5 @@
+// Page 2
+
 // Turning Right too heavy
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -59,8 +61,8 @@ const Page2 = () => {
       const normalizedX = (x + width / 2) / width;
 
       // Define thresholds for left, neutral, and right
-      const LEFT_THRESHOLD = 0.3;
-      const RIGHT_THRESHOLD = 0.7;
+      const LEFT_THRESHOLD = 0.7;
+      const RIGHT_THRESHOLD = 0.5;
       const NEUTRAL_THRESHOLD = 0.5;
 
       let newDirection = 'Neutral';
@@ -121,7 +123,7 @@ const Page2 = () => {
         </>
       )}
 
-      <View style={styles.headDirection}>
+      <View style={styles.headDirectionTop}>
         <Text style={styles.headDirectionText}>Face: {headDirection}</Text>
       </View>
     </View>
@@ -158,14 +160,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
-  headDirection: {
-    position: 'absolute',  // Position absolutely relative to the camera
-    top: 50,  // Moves it towards the top of the screen
-    alignSelf: 'center',  // Center horizontally
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Slight background for readability
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+  headDirectionTop: {
+    position: 'absolute',
+    top: 50,  // Adjust as needed
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
   headDirectionText: {
     color: 'white',
