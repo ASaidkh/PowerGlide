@@ -49,47 +49,54 @@ const Page2 = () => {
     }
   };
 
+  const [previousFaceCount, setPreviousFaceCount] = useState(0);
   // Use Worklets to handle face detection
   const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: Face[]) => {
     setFaces(detectedFaces);
 
-    if (detectedFaces.length > 0) {
-      const face = detectedFaces[0];
-      const { x, width } = face.bounds;
+    // Log number of faces only when count changes
+    if (detectedFaces.length !== previousFaceCount) {
+      console.log(`Number of detected faces: ${detectedFaces.length}`);
+      setPreviousFaceCount(detectedFaces.length);
+    }
 
-      // Normalize x to a range of 0 to 1 based on the width of the camera view
-      const normalizedX = (x + width / 2) / width;
+    if (detectedFaces.length === 0) return;
 
-      // Define thresholds for left, neutral, and right
-      const LEFT_THRESHOLD = 0.7;
-      const RIGHT_THRESHOLD = 0.5;
-      const NEUTRAL_THRESHOLD = 0.5;
+    const face = detectedFaces[0];
 
-      let newDirection = 'Neutral';
+    if (!face.bounds || !face.bounds.width) return;
 
-      if (normalizedX < LEFT_THRESHOLD) {
-        newDirection = 'Turning Left';
-      } else if (normalizedX > RIGHT_THRESHOLD) {
-        newDirection = 'Turning Right';
-      } else {
-        newDirection = 'Neutral';
-      }
+    const { x, width } = face.bounds;
 
-      // Only log if the direction changes or every 15 seconds
-      const currentTime = Date.now();
-      const timeDifference = currentTime - lastLoggedTime;
+    // Normalize x position using an assumed total frame width
+    const frameWidth = 640; // Adjust based on actual camera resolution
+    const normalizedX = (x + width / 2) / frameWidth;
 
-      // Check if direction has changed or if 15 seconds have passed since last log
-      if ((newDirection !== previousDirection && newDirection !== 'Neutral') || timeDifference >= 15000) {
-        setHeadDirection(newDirection);
-        setPreviousDirection(newDirection);
-        setLastLoggedTime(currentTime);
+    // Define thresholds
+    const LEFT_THRESHOLD = 0.3;
+    const RIGHT_THRESHOLD = 0.4;
 
-        // Log the new direction only when it changes or after 15 seconds
-        console.log(`Face Direction: ${newDirection}`);
-      }
+    let newDirection = 'Neutral';
+
+    if (normalizedX < LEFT_THRESHOLD) {
+      newDirection = 'Turning Left';
+    } else if (normalizedX > RIGHT_THRESHOLD) {
+      newDirection = 'Turning Right';
+    }
+
+    const currentTime = Date.now();
+    const timeDifference = currentTime - lastLoggedTime;
+
+    // Update state only if the direction changes or after 15s
+    if (newDirection !== previousDirection || timeDifference >= 15000) {
+      setHeadDirection(newDirection);
+      setPreviousDirection(newDirection);
+      setLastLoggedTime(currentTime);
+
+      console.log(`Face Direction: ${newDirection}`);
     }
   });
+
 
   // Frame processor
   const frameProcessor = useFrameProcessor((frame) => {
