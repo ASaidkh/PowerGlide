@@ -1,9 +1,12 @@
+// Page1.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { BleManager } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
+import { TextInput } from 'react-native';
+import Slider from '@react-native-community/slider';
 
 // Initialize BleManager
 const bleManager = new BleManager();
@@ -23,8 +26,6 @@ const COMM_SET_POS = 0x09;
 const COMM_SET_HANDBRAKE = 0x0A;
 const COMM_GET_MCCONF = 0x0B;
 const COMM_GET_APPCONF = 0x0C;
-const COMM_SET_MCCONF = 0x0D;
-const COMM_SET_APPCONF = 0x0E;
 
 const Page1 = () => {
   // State
@@ -34,6 +35,10 @@ const Page1 = () => {
   const [rxCharacteristic, setRxCharacteristic] = useState(null);
   const [txCharacteristic, setTxCharacteristic] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [pendingPacket, setPendingPacket] = useState([]);
+  const [dutyCycle, setDutyCycle] = useState(0);
+  const [targetRpm, setTargetRpm] = useState(0);
+  const [targetCurrent, setTargetCurrent] = useState(0);
   const [vescValues, setVescValues] = useState({
     tempMosfet: 0,
     tempMotor: 0,
@@ -71,56 +76,83 @@ const Page1 = () => {
     ]);
   };
 
-  // Parse received values
-  // Parse received values
-const parseVescValues = (data) => {
-  try {
-    let offset = 0;
-    const tempMosfet = data.length > offset + 2 ? data.readInt16LE(offset) / 10.0 : 0; offset += 2;
-    const tempMotor = data.length > offset + 2 ? data.readInt16LE(offset) / 10.0 : 0; offset += 2;
-    const currentMotor = data.length > offset + 4 ? data.readInt32LE(offset) / 100.0 : 0; offset += 4;
-    const currentInput = data.length > offset + 4 ? data.readInt32LE(offset) / 100.0 : 0; offset += 4;
-    const dutyCycleNow = data.length > offset + 2 ? data.readInt16LE(offset) / 1000.0 : 0; offset += 2;
-    const rpm = data.length > offset + 4 ? data.readInt32LE(offset) : 0; offset += 4;
-    const voltage = data.length > offset + 2 ? data.readInt16LE(offset) / 10.0 : 0; offset += 2;
-    const ampHours = data.length > offset + 4 ? data.readInt32LE(offset) / 10000.0 : 0; offset += 4;
-    const ampHoursCharged = data.length > offset + 4 ? data.readInt32LE(offset) / 10000.0 : 0; offset += 4;
-    const wattHours = data.length > offset + 4 ? data.readInt32LE(offset) / 10000.0 : 0; offset += 4;
-    const wattHoursCharged = data.length > offset + 4 ? data.readInt32LE(offset) / 10000.0 : 0; offset += 4;
-    const tachometer = data.length > offset + 4 ? data.readInt32LE(offset) : 0; offset += 4;
-    const tachometerAbs = data.length > offset + 4 ? data.readInt32LE(offset) : 0;
+  // Helper function to assemble packet chunks
+  const assemblePacket = (chunks) => {
+    let assembledData = Buffer.alloc(0);
+    for (let chunk of chunks) {
+      assembledData = Buffer.concat([assembledData, Buffer.from(chunk.data)]);
+    }
+    return assembledData;
+  };
 
-    setVescValues({
-      tempMosfet,
-      tempMotor,
-      currentMotor,
-      currentInput,
-      dutyCycleNow,
-      rpm,
-      voltage,
-      ampHours,
-      ampHoursCharged,
-      wattHours,
-      wattHoursCharged,
-      tachometer,
-      tachometerAbs
-    });
-  } catch (error) {
-    console.error('Error parsing VESC values:', error);
-  }
+  // Parse received values
+  const parseVescValues = (data) => {
+    try {
+      console.log('Parsing values from data:', data);
+      let buffer = Buffer.from(data);
+      let offset = 0;
+
+      if (buffer.length < 44) {
+        console.error('Data buffer too short:', buffer.length);
+        return;
+      }
+
+      const values = {
+        tempMosfet: buffer.readInt16LE(offset) / 10.0,
+        tempMotor: buffer.readInt16LE(offset + 2) / 10.0,
+        currentMotor: buffer.readInt32LE(offset + 4) / 100.0,
+        currentInput: buffer.readInt32LE(offset + 8) / 100.0,
+        dutyCycleNow: buffer.readInt16LE(offset + 12) / 1000.0,
+        rpm: buffer.readInt32LE(offset + 14),
+        voltage: buffer.readInt16LE(offset + 18) / 10.0,
+        ampHours: buffer.readInt32LE(offset + 20) / 10000.0,
+        ampHoursCharged: buffer.readInt32LE(offset + 24) / 10000.0,
+        wattHours: buffer.readInt32LE(offset + 28) / 10000.0,
+        wattHoursCharged: buffer.readInt32LE(offset + 32) / 10000.0,
+        tachometer: buffer.readInt32LE(offset + 36),
+        tachometerAbs: buffer.readInt32LE(offset + 40)
+      };
+
+      console.log('Parsed values:', values);
+      setVescValues(values);
+    } catch (error) {
+      console.error('Error parsing VESC values:', error);
+      console.error('Data that caused error:', data);
+    }
+  };
+
+  const setRPM = async (rpm) => {
+  await sendCommand(COMM_SET_RPM, [rpm]);
 };
 
+const setCurrent = async (current) => {
+  await sendCommand(COMM_SET_CURRENT, [current], 1000);
+};
+
+const setDuty = async (duty) => {
+  await sendCommand(COMM_SET_DUTY, [duty], 100000);
+};
   // Send command to VESC
-  const sendCommand = async (commandId, data = []) => {
+  const sendCommand = async (commandId, data = [], scale = 1) => {
     if (!rxCharacteristic || !isConnected) {
       Alert.alert('Error', 'Not connected to VESC');
       return;
     }
-
+  
     try {
-      const packet = createPacket(commandId, data);
+      // Create a packet similar to VByteArray approach
+      const packet = createPacket(commandId, 
+        data.map(value => {
+          // If scale is provided, scale the value (similar to vbAppendDouble32)
+          if (scale !== 1) {
+            return Math.round(value * scale);
+          }
+          return value;
+        })
+      );
+  
       console.log('Sending packet:', packet);
-
+  
       await rxCharacteristic.writeWithoutResponse(
         Buffer.from(packet).toString('base64')
       );
@@ -129,7 +161,7 @@ const parseVescValues = (data) => {
       Alert.alert('Error', 'Failed to send command');
     }
   };
-
+  
   // Connect to device
   const connectToDevice = async (selectedDevice) => {
     try {
@@ -159,6 +191,7 @@ const parseVescValues = (data) => {
       }
 
       // Set up notifications
+      // Set up notifications
       await tx.monitor((error, characteristic) => {
         if (error) {
           console.error('Notification error:', error);
@@ -166,11 +199,29 @@ const parseVescValues = (data) => {
         }
         if (characteristic?.value) {
           const data = Buffer.from(characteristic.value, 'base64');
-          console.log('Received data:', data);
+          console.log('Received chunk:', data);
           
-          // Check for values response
-          if (data.length > 2 && data[0] === COMM_GET_VALUES) {
-            parseVescValues(data.slice(1));
+          const newPackets = [...pendingPacket];
+          newPackets.push({data});
+          setPendingPacket(newPackets);
+          
+          // Check if this is the end of packet
+          if (data.includes(3)) {
+            const fullPacket = assemblePacket(newPackets);
+            console.log('Full packet:', fullPacket);
+            
+            // Extract command and payload
+            if (fullPacket.length > 3) {
+              const cmd = fullPacket[2]; // Command is after length byte
+              console.log('Command received:', cmd);
+              
+              if (cmd === COMM_GET_VALUES) {
+                // Remove packet framing (start byte, length, command, CRC, and stop byte)
+                const payload = fullPacket.slice(3, -3);
+                parseVescValues(payload);
+              }
+            }
+            setPendingPacket([]);
           }
         }
       });
@@ -206,14 +257,20 @@ const parseVescValues = (data) => {
   // Poll values periodically
   const startValuePolling = () => {
     const pollInterval = setInterval(() => {
-      if (isConnected) {
+      if (isConnected && rxCharacteristic) {
+        console.log('Polling values...');
         sendCommand(COMM_GET_VALUES);
       } else {
+        console.log('Stopping poll - disconnected');
         clearInterval(pollInterval);
       }
-    }, 1000); // Poll every 1000ms (1 second)
+    }, 1000);
 
-    return () => clearInterval(pollInterval);
+    // Store interval ID for cleanup
+    return () => {
+      console.log('Cleaning up poll interval');
+      clearInterval(pollInterval);
+    };
   };
 
   // Start scanning
@@ -321,30 +378,96 @@ const parseVescValues = (data) => {
           </View>
 
           <View style={styles.controlsContainer}>
-            <Text style={styles.subtitle}>Controls</Text>
-            
-            <TouchableOpacity 
-              style={styles.controlButton}
-              onPress={() => sendCommand(COMM_GET_VALUES)}
-            >
-              <Text style={styles.buttonText}>Get Values</Text>
-            </TouchableOpacity>
+  <Text style={styles.subtitle}>Controls</Text>
+  
+  <TouchableOpacity 
+    style={styles.controlButton}
+    onPress={() => sendCommand(COMM_GET_VALUES)}
+  >
+    <Text style={styles.buttonText}>Get Values</Text>
+  </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.controlButton}
-              onPress={() => sendCommand(COMM_GET_MCCONF)}
-            >
-              <Text style={styles.buttonText}>Get Motor Config</Text>
-            </TouchableOpacity>
+  <View style={styles.controlGroup}>
+    <Text style={styles.controlLabel}>Duty Cycle: {(dutyCycle * 100).toFixed(1)}%</Text>
+    <Slider
+      style={styles.slider}
+      value={dutyCycle}
+      onValueChange={setDutyCycle}
+      onSlidingComplete={(value) => setDuty(value)}
+      minimumValue={-1}
+      maximumValue={1}
+      step={0.01}
+      minimumTrackTintColor="#2980b9"
+      maximumTrackTintColor="#bdc3c7"
+    />
+  </View>
 
-            <TouchableOpacity 
-              style={styles.controlButton}
-              onPress={() => sendCommand(COMM_GET_APPCONF)}
-            >
-              <Text style={styles.buttonText}>Get App Config</Text>
-            </TouchableOpacity>
-          </View>
+  <View style={styles.controlGroup}>
+    <Text style={styles.controlLabel}>RPM: {targetRpm}</Text>
+    <Slider
+      style={styles.slider}
+      value={targetRpm}
+      onValueChange={setTargetRpm}
+      onSlidingComplete={(value) => setRPM(value)}
+      minimumValue={-100000}
+      maximumValue={100000}
+      step={100}
+      minimumTrackTintColor="#2980b9"
+      maximumTrackTintColor="#bdc3c7"
+    />
+    <View style={styles.inputRow}>
+      <TextInput
+        style={styles.input}
+        value={targetRpm.toString()}
+        onChangeText={(text) => setTargetRpm(Number(text) || 0)}
+        onSubmitEditing={(event) => setRPM(Number(event.nativeEvent.text) || 0)}
+        keyboardType="numeric"
+        placeholder="Enter RPM"
+      />
+    </View>
+  </View>
 
+  <View style={styles.controlGroup}>
+    <Text style={styles.controlLabel}>Current: {targetCurrent.toFixed(1)}A</Text>
+    <Slider
+      style={styles.slider}
+      value={targetCurrent}
+      onValueChange={setTargetCurrent}
+      onSlidingComplete={(value) => setCurrent(value)}
+      minimumValue={-100}
+      maximumValue={100}
+      step={0.1}
+      minimumTrackTintColor="#2980b9"
+      maximumTrackTintColor="#bdc3c7"
+    />
+    <View style={styles.inputRow}>
+      <TextInput
+        style={styles.input}
+        value={targetCurrent.toString()}
+        onChangeText={(text) => setTargetCurrent(Number(text) || 0)}
+        onSubmitEditing={(event) => setCurrent(Number(event.nativeEvent.text) || 0)}
+        keyboardType="numeric"
+        placeholder="Enter Current (A)"
+      />
+    </View>
+  </View>
+
+  <View style={styles.configButtons}>
+    <TouchableOpacity 
+      style={styles.controlButton}
+      onPress={() => sendCommand(COMM_GET_MCCONF)}
+    >
+      <Text style={styles.buttonText}>Get Motor Config</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity 
+      style={styles.controlButton}
+      onPress={() => sendCommand(COMM_GET_APPCONF)}
+    >
+      <Text style={styles.buttonText}>Get App Config</Text>
+    </TouchableOpacity>
+  </View>
+</View>
           <TouchableOpacity
             style={[styles.button, styles.disconnectButton]}
             onPress={() => {
@@ -366,7 +489,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     padding: 20,
-    backgroundColor: 'lightgreen',
+    backgroundColor: '#f5f5f5',
   },
   icon: {
     marginTop: 20,
@@ -376,21 +499,24 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
+    color: '#2c3e50',
   },
   subtitle: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 15,
+    color: '#34495e',
   },
   button: {
-    backgroundColor: 'blue',
+    backgroundColor: '#3498db',
     padding: 15,
     borderRadius: 8,
     marginVertical: 10,
     width: '80%',
+    elevation: 3,
   },
   disconnectButton: {
-    backgroundColor: 'red',
+    backgroundColor: '#e74c3c',
     marginTop: 20,
   },
   buttonText: {
@@ -401,23 +527,28 @@ const styles = StyleSheet.create({
   },
   deviceList: {
     width: '100%',
+    marginTop: 10,
   },
   deviceItem: {
-    backgroundColor: 'lightblue',
+    backgroundColor: '#fff',
     padding: 15,
     marginVertical: 5,
     borderRadius: 8,
     width: '100%',
+    elevation: 2,
   },
   deviceText: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#2c3e50',
   },
   valuesContainer: {
     width: '100%',
     backgroundColor: 'white',
     borderRadius: 10,
     padding: 15,
+    marginBottom: 15,
+    elevation: 2,
   },
   valueRow: {
     flexDirection: 'row',
@@ -425,31 +556,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#ecf0f1',
   },
   valueLabel: {
     fontSize: 14,
-    color: '#333',
+    color: '#7f8c8d',
   },
   valueText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#2c3e50',
   },
   controlsContainer: {
     width: '100%',
-    marginTop: 20,
     backgroundColor: 'white',
     borderRadius: 10,
     padding: 15,
+    elevation: 2,
+  },
+  controlRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginVertical: 5,
   },
   controlButton: {
-    backgroundColor: 'blue',
+    backgroundColor: '#2980b9',
     padding: 10,
     borderRadius: 8,
+    width: '48%',
+    elevation: 2,
     marginVertical: 5,
-    width: '100%',
   },
-  });
-  
-  export default Page1;
+  controlGroup: {
+    width: '100%',
+    marginVertical: 10,
+  },
+  controlLabel: {
+    fontSize: 16,
+    color: '#2c3e50',
+    marginBottom: 5,
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#bdc3c7',
+    borderRadius: 5,
+    padding: 5,
+    width: '50%',
+    textAlign: 'center',
+    fontSize: 16,
+  },
+  configButtons: {
+    marginTop: 10,
+    width: '100%',
+  }
+});
+
+export default Page1;
