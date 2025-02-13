@@ -34,7 +34,7 @@ const Page3 = () => {
       onPanResponderMove: (_, gestureState) => {
         const { dx, dy } = gestureState;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        const maxDistance = 75; // Radius of the outer circle minus radius of the joystick
+        const maxDistance = 140; // Radius of the outer circle minus radius of the joystick maxDistance = rad_circle - rad_circle
 
         if (distance > maxDistance) {
           const angle = Math.atan2(dy, dx);
@@ -126,9 +126,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   outerCircle: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
