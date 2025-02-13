@@ -39,6 +39,8 @@ const Page1 = () => {
   const [dutyCycle, setDutyCycle] = useState(0);
   const [targetRpm, setTargetRpm] = useState(0);
   const [targetCurrent, setTargetCurrent] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [controlInterval, setControlInterval] = useState<NodeJS.Timeout | null>(null);
   const [vescValues, setVescValues] = useState({
     tempMosfet: 0,
     tempMotor: 0,
@@ -54,7 +56,39 @@ const Page1 = () => {
     tachometer: 0,
     tachometerAbs: 0,
   });
+  const startControl = () => {
+    // Stop any existing interval
+    if (controlInterval) {
+      clearInterval(controlInterval);
+    }
 
+    // Start new interval to continuously send duty and current commands
+    const newInterval = setInterval(() => {
+      if (isConnected) {
+        // Send duty cycle command
+        sendCommand(COMM_SET_DUTY, [dutyCycle], 100000);
+        
+        // Send current command
+        sendCommand(COMM_SET_CURRENT, [targetCurrent], 1000);
+      }
+    }, 1); // Send every 50ms
+
+    setControlInterval(newInterval);
+    setIsRunning(true);
+  };
+
+  const stopControl = () => {
+    if (controlInterval) {
+      clearInterval(controlInterval);
+      setControlInterval(null);
+    }
+
+    // Send zero duty and current to stop
+    sendCommand(COMM_SET_DUTY, [0], 100000);
+    sendCommand(COMM_SET_CURRENT, [0], 1000);
+
+    setIsRunning(false);
+  };
   // Create VESC packet
   const createPacket = (commandId, data = []) => {
     const payload = [commandId, ...data];
@@ -378,96 +412,71 @@ const setDuty = async (duty) => {
           </View>
 
           <View style={styles.controlsContainer}>
-  <Text style={styles.subtitle}>Controls</Text>
-  
-  <TouchableOpacity 
-    style={styles.controlButton}
-    onPress={() => sendCommand(COMM_GET_VALUES)}
-  >
-    <Text style={styles.buttonText}>Get Values</Text>
-  </TouchableOpacity>
-
-  <View style={styles.controlGroup}>
-    <Text style={styles.controlLabel}>Duty Cycle: {(dutyCycle * 100).toFixed(1)}%</Text>
-    <Slider
-      style={styles.slider}
-      value={dutyCycle}
-      onValueChange={setDutyCycle}
-      onSlidingComplete={(value) => setDuty(value)}
-      minimumValue={-1}
-      maximumValue={1}
-      step={0.01}
-      minimumTrackTintColor="#2980b9"
-      maximumTrackTintColor="#bdc3c7"
-    />
-  </View>
-
-  <View style={styles.controlGroup}>
-    <Text style={styles.controlLabel}>RPM: {targetRpm}</Text>
-    <Slider
-      style={styles.slider}
-      value={targetRpm}
-      onValueChange={setTargetRpm}
-      onSlidingComplete={(value) => setRPM(value)}
-      minimumValue={-100000}
-      maximumValue={100000}
-      step={100}
-      minimumTrackTintColor="#2980b9"
-      maximumTrackTintColor="#bdc3c7"
-    />
-    <View style={styles.inputRow}>
-      <TextInput
-        style={styles.input}
-        value={targetRpm.toString()}
-        onChangeText={(text) => setTargetRpm(Number(text) || 0)}
-        onSubmitEditing={(event) => setRPM(Number(event.nativeEvent.text) || 0)}
-        keyboardType="numeric"
-        placeholder="Enter RPM"
-      />
-    </View>
-  </View>
-
-  <View style={styles.controlGroup}>
-    <Text style={styles.controlLabel}>Current: {targetCurrent.toFixed(1)}A</Text>
-    <Slider
-      style={styles.slider}
-      value={targetCurrent}
-      onValueChange={setTargetCurrent}
-      onSlidingComplete={(value) => setCurrent(value)}
-      minimumValue={-100}
-      maximumValue={100}
-      step={0.1}
-      minimumTrackTintColor="#2980b9"
-      maximumTrackTintColor="#bdc3c7"
-    />
-    <View style={styles.inputRow}>
-      <TextInput
-        style={styles.input}
-        value={targetCurrent.toString()}
-        onChangeText={(text) => setTargetCurrent(Number(text) || 0)}
-        onSubmitEditing={(event) => setCurrent(Number(event.nativeEvent.text) || 0)}
-        keyboardType="numeric"
-        placeholder="Enter Current (A)"
-      />
-    </View>
-  </View>
-
-  <View style={styles.configButtons}>
+    <Text style={styles.subtitle}>Controls</Text>
+    
     <TouchableOpacity 
       style={styles.controlButton}
-      onPress={() => sendCommand(COMM_GET_MCCONF)}
+      onPress={() => sendCommand(COMM_GET_VALUES)}
     >
-      <Text style={styles.buttonText}>Get Motor Config</Text>
+      <Text style={styles.buttonText}>Get Values</Text>
     </TouchableOpacity>
 
+    <View style={styles.controlGroup}>
+      <Text style={styles.controlLabel}>Duty Cycle: {(dutyCycle * 100).toFixed(1)}%</Text>
+      <Slider
+        style={styles.slider}
+        value={dutyCycle}
+        onValueChange={setDutyCycle}
+        minimumValue={-1}
+        maximumValue={1}
+        step={0.01}
+        minimumTrackTintColor="#2980b9"
+        maximumTrackTintColor="#bdc3c7"
+      />
+    </View>
+
+    <View style={styles.controlGroup}>
+      <Text style={styles.controlLabel}>Current: {targetCurrent.toFixed(1)}A</Text>
+      <Slider
+        style={styles.slider}
+        value={targetCurrent}
+        onValueChange={setTargetCurrent}
+        minimumValue={-100}
+        maximumValue={100}
+        step={0.1}
+        minimumTrackTintColor="#2980b9"
+        maximumTrackTintColor="#bdc3c7"
+      />
+    </View>
+
     <TouchableOpacity 
-      style={styles.controlButton}
-      onPress={() => sendCommand(COMM_GET_APPCONF)}
+      style={[
+        styles.controlButton, 
+        isRunning ? styles.stopButton : styles.goButton
+      ]}
+      onPress={isRunning ? stopControl : startControl}
     >
-      <Text style={styles.buttonText}>Get App Config</Text>
+      <Text style={styles.buttonText}>
+        {isRunning ? 'STOP' : 'GO'}
+      </Text>
     </TouchableOpacity>
+
+    <View style={styles.configButtons}>
+      <TouchableOpacity 
+        style={styles.controlButton}
+        onPress={() => sendCommand(COMM_GET_MCCONF)}
+      >
+        <Text style={styles.buttonText}>Get Motor Config</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.controlButton}
+        onPress={() => sendCommand(COMM_GET_APPCONF)}
+      >
+        <Text style={styles.buttonText}>Get App Config</Text>
+      </TouchableOpacity>
+    </View>
   </View>
-</View>
           <TouchableOpacity
             style={[styles.button, styles.disconnectButton]}
             onPress={() => {
@@ -619,6 +628,12 @@ const styles = StyleSheet.create({
   configButtons: {
     marginTop: 10,
     width: '100%',
+  },
+  goButton: {
+    backgroundColor: '#2ecc71', // Green for Go
+  },
+  stopButton: {
+    backgroundColor: '#e74c3c', // Red for Stop
   }
 });
 
