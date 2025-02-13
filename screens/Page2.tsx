@@ -1,5 +1,9 @@
+// Page 2
+
+// Turning Right too heavy
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking, AppState } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission, useFrameProcessor } from 'react-native-vision-camera';
 import { useFaceDetector, Face, FaceDetectionOptions } from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core'; // Import Worklets
@@ -17,7 +21,6 @@ const Page2 = () => {
   const [headDirection, setHeadDirection] = useState('Neutral');
   const [previousDirection, setPreviousDirection] = useState('Neutral');
   const [lastLoggedTime, setLastLoggedTime] = useState(0);
-  const [appState, setAppState] = useState(AppState.currentState);  // Track app state
 
   const faceDetectionOptions = useRef<FaceDetectionOptions>({
     mode: 'accurate',
@@ -29,26 +32,7 @@ const Page2 = () => {
 
   useEffect(() => {
     requestPermissions();
-    
-    // AppState listener to detect when the app goes to the background or is closed
-    const appStateListener = AppState.addEventListener('change', nextAppState => {
-      setAppState(nextAppState);
-      if (nextAppState === 'background' || nextAppState === 'inactive') {
-        // Stop face detection when the app goes to the background or is closed
-        setShowCamera(false);
-      } else if (nextAppState === 'active') {
-        // Start face detection when the app is active
-        if (hasCameraPermission && hasMicPermission) {
-          setShowCamera(true);
-        }
-      }
-    });
-
-    // Clean up the listener on unmount
-    return () => {
-      appStateListener.remove();
-    };
-  }, [hasCameraPermission, hasMicPermission]);
+  }, []);
 
   const requestPermissions = async () => {
     const cameraGranted = await requestCameraPermission();
@@ -112,6 +96,7 @@ const Page2 = () => {
       console.log(`Face Direction: ${newDirection}`);
     }
   });
+
 
   // Frame processor
   const frameProcessor = useFrameProcessor((frame) => {
