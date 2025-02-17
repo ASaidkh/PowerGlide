@@ -1,10 +1,8 @@
-// Security issue fixed; camera kept detecting after app exit
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking, AppState } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission, useFrameProcessor } from 'react-native-vision-camera';
 import { useFaceDetector, Face, FaceDetectionOptions } from 'react-native-vision-camera-face-detector';
-import { Worklets } from 'react-native-worklets-core'; // Import Worklets
+import { Worklets } from 'react-native-worklets-core';
 import Reanimated from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
@@ -19,7 +17,7 @@ const Page2 = () => {
   const [headDirection, setHeadDirection] = useState('Neutral');
   const [previousDirection, setPreviousDirection] = useState('Neutral');
   const [lastLoggedTime, setLastLoggedTime] = useState(0);
-  const [appState, setAppState] = useState(AppState.currentState);  // Track app state
+  const [appState, setAppState] = useState(AppState.currentState);
 
   const faceDetectionOptions = useRef<FaceDetectionOptions>({
     mode: 'accurate',
@@ -31,22 +29,16 @@ const Page2 = () => {
 
   useEffect(() => {
     requestPermissions();
-    
-    // AppState listener to detect when the app goes to the background or is closed
+
     const appStateListener = AppState.addEventListener('change', nextAppState => {
       setAppState(nextAppState);
       if (nextAppState === 'background' || nextAppState === 'inactive') {
-        // Stop face detection when the app goes to the background or is closed
         setShowCamera(false);
-      } else if (nextAppState === 'active') {
-        // Start face detection when the app is active
-        if (hasCameraPermission && hasMicPermission) {
-          setShowCamera(true);
-        }
+      } else if (nextAppState === 'active' && hasCameraPermission && hasMicPermission) {
+        setShowCamera(true);
       }
     });
 
-    // Clean up the listener on unmount
     return () => {
       appStateListener.remove();
     };
@@ -68,11 +60,10 @@ const Page2 = () => {
   };
 
   const [previousFaceCount, setPreviousFaceCount] = useState(0);
-  // Use Worklets to handle face detection
+
   const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: Face[]) => {
     setFaces(detectedFaces);
 
-    // Log number of faces only when count changes
     if (detectedFaces.length !== previousFaceCount) {
       console.log(`Number of detected faces: ${detectedFaces.length}`);
       setPreviousFaceCount(detectedFaces.length);
@@ -85,12 +76,9 @@ const Page2 = () => {
     if (!face.bounds || !face.bounds.width) return;
 
     const { x, width } = face.bounds;
-
-    // Normalize x position using an assumed total frame width
-    const frameWidth = 640; // Adjust based on actual camera resolution
+    const frameWidth = 640;
     const normalizedX = (x + width / 2) / frameWidth;
 
-    // Define thresholds
     const LEFT_THRESHOLD = 0.3;
     const RIGHT_THRESHOLD = 0.4;
 
@@ -105,7 +93,6 @@ const Page2 = () => {
     const currentTime = Date.now();
     const timeDifference = currentTime - lastLoggedTime;
 
-    // Update state only if the direction changes or after 15s
     if (newDirection !== previousDirection || timeDifference >= 15000) {
       setHeadDirection(newDirection);
       setPreviousDirection(newDirection);
@@ -115,34 +102,42 @@ const Page2 = () => {
     }
   });
 
-  // Frame processor
   const frameProcessor = useFrameProcessor((frame) => {
-    'worklet'; // Indicating this is a worklet function
+    'worklet';
     const detectedFaces = detectFaces(frame);
-    handleDetectedFaces(detectedFaces); // Process detected faces on the JS thread
+    handleDetectedFaces(detectedFaces);
   }, [handleDetectedFaces]);
+
+  const toggleCamera = () => {
+    setShowCamera(prev => !prev);
+  };
 
   if (device == null) return <Text>No camera device</Text>;
 
   return (
     <View style={styles.page}>
       {showCamera ? (
-        <ReanimatedCamera
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={true}
-          frameProcessor={frameProcessor}
-          frameProcessorFps={5}
-          onError={(error) => {
-            console.error('Camera error:', error);
-          }}
-        />
+        <>
+          <ReanimatedCamera
+            style={StyleSheet.absoluteFill}
+            device={device}
+            isActive={true}
+            frameProcessor={frameProcessor}
+            frameProcessorFps={5}
+            onError={(error) => {
+              console.error('Camera error:', error);
+            }}
+          />
+          <TouchableOpacity style={styles.toggleButton} onPress={toggleCamera}>
+            <Text style={styles.buttonText}>Close Camera</Text>
+          </TouchableOpacity>
+        </>
       ) : (
         <>
           <Icon name="wheelchair" size={75} color="white" style={styles.icon} />
           <Text style={styles.title}>Start Glide!</Text>
-          <TouchableOpacity style={styles.button} onPress={requestPermissions}>
-            <Text style={styles.buttonText}>Open Camera & Microphone</Text>
+          <TouchableOpacity style={styles.button} onPress={toggleCamera}>
+            <Text style={styles.buttonText}>Open Camera</Text>
           </TouchableOpacity>
         </>
       )}
@@ -178,6 +173,15 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginTop: 20,
   },
+  toggleButton: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    backgroundColor: 'red',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 5,
+  },
   buttonText: {
     color: 'white',
     fontSize: 16,
@@ -186,7 +190,7 @@ const styles = StyleSheet.create({
   },
   headDirectionTop: {
     position: 'absolute',
-    top: 50,  // Adjust as needed
+    top: 50,
     left: 0,
     right: 0,
     alignItems: 'center',
