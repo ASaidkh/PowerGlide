@@ -5,6 +5,7 @@ export default function useVoskRecognition() {
   const [result, setResult] = useState<string | undefined>();
   const [recognizing, setRecognizing] = useState<boolean>(false);
   const [modelLoaded, setModelLoaded] = useState<boolean>(false);
+  const [previousRecognizing, setPreviousRecognizing] = useState<boolean>(false); // Track previous state
   const vosk = useRef(new Vosk()).current;
 
   const loadModel = useCallback(() => {
@@ -27,7 +28,11 @@ export default function useVoskRecognition() {
       return;
     }
     if (recognizing) {
-      console.log('Recognizer is already running.');
+      // Only log if the previous state was different
+      if (!previousRecognizing) {
+        console.log('Recognizer is already running.');
+        setPreviousRecognizing(true);
+      }
       return; // Avoid starting recognition if it's already in use
     }
 
@@ -35,6 +40,7 @@ export default function useVoskRecognition() {
       .start({ grammar: ['go', 'reverse', 'speed one', 'speed two', 'speed three', 'stop'] })
       .then(() => {
         setRecognizing(true);
+        setPreviousRecognizing(true); // Update previousRecognizing
         console.log('Starting recognition...');
       })
       .catch((e) => console.error('Start recognition error:', e));
@@ -43,7 +49,11 @@ export default function useVoskRecognition() {
   const stopRecognition = () => {
     vosk.stop();
     setRecognizing(false);
-    console.log('Recognition stopped');
+    // Only log if the previous state was different
+    if (previousRecognizing) {
+      console.log('Recognition stopped');
+      setPreviousRecognizing(false); // Update previousRecognizing
+    }
   };
 
   // Handle the result and partial results
