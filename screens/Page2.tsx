@@ -1,3 +1,5 @@
+//Page2 with disable voice rec until model loaded
+
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking, AppState } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission, useFrameProcessor } from 'react-native-vision-camera';
@@ -5,6 +7,7 @@ import { useFaceDetector, Face, FaceDetectionOptions } from 'react-native-vision
 import { Worklets } from 'react-native-worklets-core';
 import Reanimated from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import useVoskRecognition from '../hooks/UseVoskRecognition'; // Import the custom hook
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);
 
@@ -18,6 +21,9 @@ const Page2 = () => {
   const [previousDirection, setPreviousDirection] = useState('Neutral');
   const [lastLoggedTime, setLastLoggedTime] = useState(0);
   const [appState, setAppState] = useState(AppState.currentState);
+
+  // Destructure all return values from useVoskRecognition hook
+  const { result, recognizing, modelLoaded, loadModel, startRecognition, stopRecognition } = useVoskRecognition();
 
   const faceDetectionOptions = useRef<FaceDetectionOptions>({
     mode: 'accurate',
@@ -112,6 +118,18 @@ const Page2 = () => {
     setShowCamera(prev => !prev);
   };
 
+  const handleStartRecognition = async () => {
+    // Wait until the model is loaded before starting recognition
+    if (!modelLoaded) {
+      await loadModel(); // Ensure model is loaded
+    }
+    startRecognition(); // Start recognition after model is loaded
+  };
+
+  const handleStopRecognition = () => {
+    stopRecognition(); // Stop recognition when the button is clicked
+  };
+
   if (device == null) return <Text>No camera device</Text>;
 
   return (
@@ -145,6 +163,27 @@ const Page2 = () => {
       <View style={styles.headDirectionTop}>
         <Text style={styles.headDirectionText}>Face: {headDirection}</Text>
       </View>
+
+      {/* Display the recognized voice command */}
+      <View style={styles.commandContainer}>
+        <Text style={styles.commandText}>Voice Command: {result}</Text>
+      </View>
+
+      {/* Start and stop recognition buttons */}
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={handleStartRecognition} 
+        disabled={recognizing || !modelLoaded}  // Disabled if not loaded or recognizing
+      >
+        <Text style={styles.buttonText}>Start Recognition</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={handleStopRecognition} 
+        disabled={!recognizing}  // Disabled if not recognizing
+      >
+        <Text style={styles.buttonText}>Stop Recognition</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -196,6 +235,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headDirectionText: {
+    color: 'white',
+    fontSize: 18,
+  },
+  commandContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  commandText: {
     color: 'white',
     fontSize: 18,
   },

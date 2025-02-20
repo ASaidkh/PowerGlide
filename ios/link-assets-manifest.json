@@ -1,0 +1,61 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/am/final.mdl",
+      "sha1": "dcaaf4c73b37973eb53aca0f123671b00702c766"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/conf/mfcc.conf",
+      "sha1": "a4e74fb5611bf90d9da658790c55970cb859a5ab"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/conf/model.conf",
+      "sha1": "58331cc29cf9fd713c254bcea2451522177cc5ac"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/graph/disambig_tid.int",
+      "sha1": "dcb1e56813162352800a34fbc0d3556fcc785f3d"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/graph/Gr.fst",
+      "sha1": "09b11ef4fd0b3e7469d6ddd57bb6b640cf6cdde6"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/graph/HCLr.fst",
+      "sha1": "96eef5ffc0f47277ebcb67cc503b870eebbf09f7"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/graph/phones/word_boundary.int",
+      "sha1": "76e59f23a14a0b495fcc302903d19b406a3b6ffc"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/ivector/final.dubm",
+      "sha1": "d54e14407566992f116bd1c3e078425c70b448d0"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/ivector/final.ie",
+      "sha1": "0cc498a51de60dab924874d159b5692b5d960ec0"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/ivector/final.mat",
+      "sha1": "42e243fe6b7fe472332d68f7796ae8804d132636"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/ivector/global_cmvn.stats",
+      "sha1": "c61cb0008f9f09821d360fef51c1650cf7d76aa0"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/ivector/online_cmvn.conf",
+      "sha1": "9cf2b6941b3110f2678dac465a25099957f60369"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/ivector/splice.conf",
+      "sha1": "14768865d57598ce48119e8657ecafd0a7d62681"
+    },
+    {
+      "path": "assets/model/vosk-model-small-en-us-0.15/uuid",
+      "sha1": "de4095bc4849b1278d41a772f5d09b117e39f823"
+    }
+  ]
+}
