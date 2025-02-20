@@ -1,5 +1,3 @@
-//Page2 with disable voice rec until model loaded
-
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking, AppState } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission, useFrameProcessor } from 'react-native-vision-camera';
@@ -21,6 +19,7 @@ const Page2 = () => {
   const [previousDirection, setPreviousDirection] = useState('Neutral');
   const [lastLoggedTime, setLastLoggedTime] = useState(0);
   const [appState, setAppState] = useState(AppState.currentState);
+  const [micOn, setMicOn] = useState(false);  // Track microphone state
 
   // Destructure all return values from useVoskRecognition hook
   const { result, recognizing, modelLoaded, loadModel, startRecognition, stopRecognition } = useVoskRecognition();
@@ -49,6 +48,19 @@ const Page2 = () => {
       appStateListener.remove();
     };
   }, [hasCameraPermission, hasMicPermission]);
+
+  useEffect(() => {
+    // Automatically load model on mount
+    loadModel();
+  }, [loadModel]);
+
+  useEffect(() => {
+    if (modelLoaded && micOn) {
+      startRecognition();  // Start recognition when mic is turned on
+    } else {
+      stopRecognition();  // Stop recognition when mic is turned off
+    }
+  }, [modelLoaded, micOn, startRecognition, stopRecognition]);
 
   const requestPermissions = async () => {
     const cameraGranted = await requestCameraPermission();
@@ -114,20 +126,8 @@ const Page2 = () => {
     handleDetectedFaces(detectedFaces);
   }, [handleDetectedFaces]);
 
-  const toggleCamera = () => {
-    setShowCamera(prev => !prev);
-  };
-
-  const handleStartRecognition = async () => {
-    // Wait until the model is loaded before starting recognition
-    if (!modelLoaded) {
-      await loadModel(); // Ensure model is loaded
-    }
-    startRecognition(); // Start recognition after model is loaded
-  };
-
-  const handleStopRecognition = () => {
-    stopRecognition(); // Stop recognition when the button is clicked
+  const toggleMic = () => {
+    setMicOn(prev => !prev);
   };
 
   if (device == null) return <Text>No camera device</Text>;
@@ -146,7 +146,7 @@ const Page2 = () => {
               console.error('Camera error:', error);
             }}
           />
-          <TouchableOpacity style={styles.toggleButton} onPress={toggleCamera}>
+          <TouchableOpacity style={styles.toggleButton} onPress={() => setShowCamera(false)}>
             <Text style={styles.buttonText}>Close Camera</Text>
           </TouchableOpacity>
         </>
@@ -154,7 +154,7 @@ const Page2 = () => {
         <>
           <Icon name="wheelchair" size={75} color="white" style={styles.icon} />
           <Text style={styles.title}>Start Glide!</Text>
-          <TouchableOpacity style={styles.button} onPress={toggleCamera}>
+          <TouchableOpacity style={styles.button} onPress={() => setShowCamera(true)}>
             <Text style={styles.buttonText}>Open Camera</Text>
           </TouchableOpacity>
         </>
@@ -169,20 +169,12 @@ const Page2 = () => {
         <Text style={styles.commandText}>Voice Command: {result}</Text>
       </View>
 
-      {/* Start and stop recognition buttons */}
+      {/* Mic on/off toggle */}
       <TouchableOpacity 
         style={styles.button} 
-        onPress={handleStartRecognition} 
-        disabled={recognizing || !modelLoaded}  // Disabled if not loaded or recognizing
+        onPress={toggleMic}
       >
-        <Text style={styles.buttonText}>Start Recognition</Text>
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={handleStopRecognition} 
-        disabled={!recognizing}  // Disabled if not recognizing
-      >
-        <Text style={styles.buttonText}>Stop Recognition</Text>
+        <Text style={styles.buttonText}>{micOn ? 'Turn Off Mic' : 'Turn On Mic'}</Text>
       </TouchableOpacity>
     </View>
   );

@@ -13,6 +13,7 @@ export default function useVoskRecognition() {
       .then(() => {
         setModelLoaded(true);
         console.log('Model loaded successfully');
+        startRecognition(); // Start recognition after the model is loaded
       })
       .catch((e) => {
         setModelLoaded(false);
@@ -24,6 +25,10 @@ export default function useVoskRecognition() {
     if (!modelLoaded) {
       console.error('Model is not loaded yet');
       return;
+    }
+    if (recognizing) {
+      console.log('Recognizer is already running.');
+      return; // Avoid starting recognition if it's already in use
     }
 
     vosk
@@ -69,5 +74,5 @@ export default function useVoskRecognition() {
     };
   }, [vosk]);
 
-  return { result, recognizing, modelLoaded, loadModel, startRecognition, stopRecognition };  // Return modelLoaded
+  return { result, recognizing, modelLoaded, loadModel, startRecognition, stopRecognition };
 }
