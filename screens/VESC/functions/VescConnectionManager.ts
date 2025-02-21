@@ -75,20 +75,10 @@ export class VescConnectionManager {
                 throw new Error('UART characteristics not found');
             }
 
-            // Setup value notifications
-            this.valueSubscription = txChar.monitor((error, characteristic) => {
-                if (error) {
-                    console.error('Value notification error:', error);
-                    return;
-                }
-                if (characteristic?.value) {
-                    const data = Buffer.from(characteristic.value, 'base64');
-                    this.handleIncomingData(data); // Handle incoming data
-                }
-            });
+            
 
             // Initialize VESC commands
-            this.vescCommands = new VescCommands(rxChar);
+            this.vescCommands = new VescCommands(rxChar, txChar);
             this.device = discoveredDevice;
 
             return this.vescCommands;

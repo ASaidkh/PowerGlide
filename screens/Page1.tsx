@@ -62,7 +62,7 @@ const Page1: React.FC = () => {
             
             // Start polling VESC values
             vescCommands.getValues();
-            vescCommands.pingCan();
+            //vescCommands.pingCan();
         } catch (error) {
             Alert.alert('Connection Error', 'Failed to connect to device');
         }
@@ -93,9 +93,11 @@ const Page1: React.FC = () => {
                     <VescControls 
                         dutyCycle={vescState.states.dutyCycle}
                         targetCurrent={vescState.states.targetCurrent}
+                        targetRPM={vescState.states.targetRPM}
                         isRunning={vescState.states.isRunning}
                         onDutyCycleChange={vescState.setters.setDutyCycle}
                         onCurrentChange={vescState.setters.setTargetCurrent}
+                        onRPMchange={vescState.setters.setTargetRPM}
                         onStartStop={() => {
                             if (vescState.states.isRunning) {
                                 controlManager?.stopControl();

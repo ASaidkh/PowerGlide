@@ -76,35 +76,7 @@ export class PacketAssembly {
     return assembledData;
   }
 
-  static parseVescValues(data: Buffer) {
-    try {
-      let offset = 0;
-      const mask = 0xFFFFFFFF; // Assuming all 32 bits are used
   
-      return {
-        tempMosfet: (mask & (1 << 0)) ? data.readInt16LE(offset) / 10.0 : undefined,
-        tempMotor: (mask & (1 << 1)) ? data.readInt16LE(offset + 2) / 10.0 : undefined,
-        currentMotor: (mask & (1 << 2)) ? data.readInt32LE(offset + 4) / 100.0 : undefined,
-        currentInput: (mask & (1 << 3)) ? data.readInt32LE(offset + 8) / 100.0 : undefined,
-        id: (mask & (1 << 4)) ? data.readInt32LE(offset + 12) / 100.0 : undefined,
-        iq: (mask & (1 << 5)) ? data.readInt32LE(offset + 16) / 100.0 : undefined,
-        dutyCycleNow: (mask & (1 << 6)) ? data.readInt16LE(offset + 20) / 1000.0 : undefined,
-        rpm: (mask & (1 << 7)) ? data.readInt32LE(offset + 22) : undefined,
-        voltage: (mask & (1 << 8)) ? data.readInt16LE(offset + 26) / 10.0 : undefined,
-        ampHours: (mask & (1 << 9)) ? data.readInt32LE(offset + 28) / 10000.0 : undefined,
-        ampHoursCharged: (mask & (1 << 10)) ? data.readInt32LE(offset + 32) / 10000.0 : undefined,
-        wattHours: (mask & (1 << 11)) ? data.readInt32LE(offset + 36) / 10000.0 : undefined,
-        wattHoursCharged: (mask & (1 << 12)) ? data.readInt32LE(offset + 40) / 10000.0 : undefined,
-        tachometer: (mask & (1 << 13)) ? data.readInt32LE(offset + 44) : undefined,
-        tachometerAbs: (mask & (1 << 14)) ? data.readInt32LE(offset + 48) : undefined,
-        faultCode: (mask & (1 << 15)) ? data.readInt8(offset + 52) : undefined,
-       
-      };
-    } catch (error) {
-      console.error('Error parsing VESC values:', error);
-      throw error;
-    }
-  }
   
 
 }

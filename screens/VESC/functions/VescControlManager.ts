@@ -18,9 +18,17 @@ export class VescControlManager {
     // Set new interval
     const newInterval = setInterval(() => {
       // Always use the latest state value for dutyCycle
-      const latestDutyCycle = this.state.states.dutyCycle;
-      console.log("Duty Cycle:", this.state.states.dutyCycle);
-      this.commands.setDuty(latestDutyCycle);  // Send the updated duty cycle
+     // const latestDutyCycle = this.state.states.dutyCycle;
+      //console.log("Duty Cycle:", this.state.states.dutyCycle);
+     // this.commands.setDuty(latestDutyCycle);  // Send the updated duty cycle
+
+      //const latestCurrent = this.state.states.targetCurrent;
+     // console.log("Current:", this.state.states.targetCurrent);
+      //this.commands.setCurrent(latestCurrent);  // Send the current
+
+      const latestRPM = this.state.states.targetRPM;
+      console.log("RPM:", this.state.states.targetRPM);
+      this.commands.setRpm(latestRPM);  // Send the updated RPM
     }, 1000);
 
     // Store the new interval and update the running state

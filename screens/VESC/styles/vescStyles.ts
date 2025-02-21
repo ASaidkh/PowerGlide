@@ -88,6 +88,7 @@ export const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 10,
     padding: 15,
+    marginBottom: 15,
     elevation: 2,
   },
   controlRow: {
@@ -105,8 +106,9 @@ export const styles = StyleSheet.create({
     marginVertical: 5,
   },
   controlGroup: {
-    width: '100%',
-    marginVertical: 10,
+    width: 250,
+    height: '10%',
+    marginBottom: 50,
   },
   controlLabel: {
     fontSize: 16,
@@ -115,7 +117,7 @@ export const styles = StyleSheet.create({
   },
   slider: {
     width: '100%',
-    height: 40,
+    height: 50,
   },
   inputRow: {
     flexDirection: 'row',
