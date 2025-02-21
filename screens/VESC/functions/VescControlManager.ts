@@ -28,7 +28,7 @@ export class VescControlManager {
 
       const latestRPM = this.state.states.targetRPM;
       console.log("RPM:", this.state.states.targetRPM);
-      this.commands.setRpm(latestRPM);  // Send the updated RPM
+      this.commands.setRpmForVesc(36, latestRPM);  // Send the updated RPM
     }, 1000);
 
     // Store the new interval and update the running state
@@ -45,7 +45,7 @@ export class VescControlManager {
     }
 
     // Stop the control (set duty cycle to 0)
-    this.commands.setDuty(0); 
+    this.commands.setRpm(0); 
 
     // Reset state
     setControlInterval(null);
