@@ -180,6 +180,37 @@ async parseVescValues(data: Buffer) {
     return crc;
   }
 
+async forwardCanFrame(canId: number, commandId: number, data: Buffer) {
+    // Frame ID needs to be 4 bytes total
+    // VESC ID in lower 8 bits, Command ID in next 8 bits
+    const frameId = canId | (commandId << 8);
+    const frameIdBuffer = Buffer.alloc(4);
+    frameIdBuffer.writeUInt32BE(frameId);
+
+    console.log("Frame ID buffer:", frameIdBuffer);
+    
+    // Data should stay in Big Endian
+    const frameData = Array.from(frameIdBuffer).concat(Array.from(data));
+
+    // Add isExtended flag at the end
+    frameData.push(0); // 1 for extended CAN frame
+
+    console.log("Complete CAN frame data:", frameData);
+    
+    await this.sendCommand(COMMANDS.CAN_FWD_FRAME, frameData);
+}
+
+async setRpmForVesc(canId: number, rpm: number) {
+   await this.setRpm(rpm);
+    // For CAN, data values should be Big Endian
+    const buffer = Buffer.alloc(4);
+    buffer.writeInt32BE(Math.round(rpm), 0);  // Use BE for values
+
+    console.log("CAN RPM BUFFER:", buffer);
+    // CAN_PACKET_SET_RPM = 3
+    await this.forwardCanFrame(canId, 3, buffer);
+}
+
   async setDuty(duty: number) {
     // Clamp duty cycle between -1 and 1
     duty = Math.max(-1, Math.min(1, duty));
@@ -215,19 +246,6 @@ async setRpm(rpm: number) {
 
   // Send command
   await this.sendCommand(COMMANDS.SET_RPM, rpmData);
-}
-
-  async forwardCanFrame(data: Buffer, id: number, isExtended: boolean = false) {
-    const dataArray = Array.from(data);
-
-    const canForwardPacket = [
-        COMMANDS.CAN_FWD_FRAME,  // Command to forward CAN frame
-        ...[id & 0xFF, (id >> 8) & 0xFF, (id >> 16) & 0xFF, (id >> 24) & 0xFF],  // 32-bit ID in little-endian
-        isExtended ? 1 : 0,  // Extended flag
-        ...dataArray  // Actual data payload
-    ];
-
-    await this.sendCommand(COMMANDS.CAN_FWD_FRAME, canForwardPacket);
 }
   
   
@@ -293,19 +311,23 @@ async setCurrent(current: number) {
                     dataBuffer = Buffer.concat([dataBuffer, decodedPacket.slice(2)]);
                     console.log("expectedLength:", expectedLength);
                 }
-            } else {
+            } else  if (expectedLength !== -1){
                 dataBuffer = Buffer.concat([dataBuffer, decodedPacket]);
                 console.log("Buffer length:", dataBuffer.length);
-                console.log("Data Buffer:",  dataBuffer);
+                console.log("Data Buffer:", dataBuffer);
                 if (dataBuffer.length >= expectedLength) {
                     dataHandler.remove();
                     
                     try {
-                      
                         const actualData = dataBuffer.slice(1, expectedLength);
                         console.log("Parsing Data:", actualData);
                         const values = this.parseVescValues(actualData);
                         console.log("Parsed Values:", values);
+                        
+                        // Clear the buffer after successful parsing
+                        dataBuffer = Buffer.alloc(0);
+                        expectedLength = -1;
+                        
                         resolve(values);
                     } catch (err) {
                         reject(err);
