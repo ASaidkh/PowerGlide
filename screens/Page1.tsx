@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { SafeAreaView, View, Alert } from 'react-native';
 import { Device } from 'react-native-ble-plx';
 import { styles } from './VESC/styles/vescStyles';
-import { useVescState } from './VESC/functions/VescStateManager';
 import { VescConnectionManager } from './VESC/functions/VescConnectionManager';
 import { VescControlManager } from './VESC/functions/VescControlManager';
 import { VescControls } from './VESC/components/VescControls';
@@ -10,8 +9,7 @@ import { ValuesDisplay } from './VESC/components/ValuesDisplay';
 import { LoggingControls } from './VESC/components/LoggingControls';
 import { ScanningView } from './VESC/components/ScanningView';
 
-const Page1: React.FC = () => {
-    const vescState = useVescState();
+const Page1 = ({ vescState }) => {
     const connectionManager = React.useRef(new VescConnectionManager()).current;
     const [controlManager, setControlManager] = React.useState<VescControlManager | null>(null);
 
@@ -59,6 +57,8 @@ const Page1: React.FC = () => {
             setControlManager(newControlManager);
             
             vescState.setters.setIsConnected(true);
+            vescState.states.isConnected = true;
+            console.log("isConnected: ", vescState.states.isConnected);
             
             // Start polling VESC values
             vescCommands.getValues();
