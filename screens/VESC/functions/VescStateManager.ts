@@ -11,7 +11,8 @@ export const useVescState = () => {
   // Control states
   const [dutyCycle, setDutyCycle] = useState(0);
   const [targetCurrent, setTargetCurrent] = useState(0);
-  const [targetRPM, setTargetRPM] = useState(0);
+  const [RightMotorRPM, setRightMotorRPM] = useState(0);
+  const [LeftMotorRPM, setLeftMotorRPM] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [controlInterval, setControlInterval] = useState(null);
   const [loggingInterval, setLoggingInterval] = useState(null);
@@ -35,7 +36,8 @@ export const useVescState = () => {
       devices,
       dutyCycle,
       targetCurrent,
-      targetRPM,
+      RightMotorRPM,
+      LeftMotorRPM,
       isRunning,
       isLogging,
       logData,
@@ -49,7 +51,8 @@ export const useVescState = () => {
       setDevices,
       setDutyCycle,
       setTargetCurrent,
-      setTargetRPM,
+      setRightMotorRPM,
+      setLeftMotorRPM,
       setIsRunning,
       setIsLogging,
       setLogData,

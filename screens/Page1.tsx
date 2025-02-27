@@ -93,11 +93,13 @@ const Page1: React.FC = () => {
                     <VescControls 
                         dutyCycle={vescState.states.dutyCycle}
                         targetCurrent={vescState.states.targetCurrent}
-                        targetRPM={vescState.states.targetRPM}
+                        RightMotorRPM={vescState.states.RightMotorRPM}
+                        LeftMotorRPM={vescState.states.LeftMotorRPM}
                         isRunning={vescState.states.isRunning}
                         onDutyCycleChange={vescState.setters.setDutyCycle}
                         onCurrentChange={vescState.setters.setTargetCurrent}
-                        onRPMchange={vescState.setters.setTargetRPM}
+                        onRightMotorRPMchange={vescState.setters.setRightMotorRPM}
+                        onLeftMotorRPMchange={vescState.setters.setLeftMotorRPM}
                         onStartStop={() => {
                             if (vescState.states.isRunning) {
                                 controlManager?.stopControl();

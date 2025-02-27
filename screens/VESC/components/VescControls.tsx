@@ -7,11 +7,12 @@ export const VescControls = ({
   dutyCycle,
   targetCurrent,
   isRunning,
-  onDutyCycleChange,
-  onCurrentChange,
+  onRightMotorRPMchange,
+  onLeftMotorRPMchange,
   onStartStop,
   onRPMchange,
-  targetRPM
+  RightMotorRPM,
+  LeftMotorRPM
 }) => {
   return (
     <View style={styles.controlsContainer}>
@@ -42,12 +43,24 @@ export const VescControls = ({
     */}
     
       <View style={styles.controlGroup}>
-        <Text style={{ color: 'black' }}>RPM: {targetRPM.toFixed(1)} </Text>
+        <Text style={{ color: 'black' }}>Right Motor RPM: {RightMotorRPM.toFixed(1)} </Text>
         <Slider    style = {styles.slider}
-          value={targetRPM}
-          onValueChange={onRPMchange}
-          minimumValue={-50000}
-          maximumValue={50000}
+          value={RightMotorRPM}
+          onValueChange={onRightMotorRPMchange}
+          minimumValue={-10000}
+          maximumValue={10000}
+          step={1}
+         
+        />
+      </View>
+
+      <View style={styles.controlGroup}>
+        <Text style={{ color: 'black' }}>Left Motor RPM: {LeftMotorRPM.toFixed(1)} </Text>
+        <Slider    style = {styles.slider}
+          value={LeftMotorRPM}
+          onValueChange={onLeftMotorRPMchange}
+          minimumValue={-10000}
+          maximumValue={10000}
           step={1}
          
         />
