@@ -4,13 +4,11 @@ import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import Page1 from './screens/Page1';
 import Page2 from './screens/Page2';
 import Page3 from './screens/Page3';
+import { useVescState } from './screens/VESC/functions/VescStateManager';
 
-const renderScene = SceneMap({
-  first: Page1,
-  second: Page2,
-  third: Page3,
-});
 
+
+// App.tsx
 export default function App() {
   const layout = useWindowDimensions();
   const [index, setIndex] = useState(0);
@@ -19,6 +17,23 @@ export default function App() {
     { key: 'second', title: 'Camera' },
     { key: 'third', title: 'GPS' },
   ]);
+  
+  // Create a single shared state instance
+  const sharedVescState = useVescState();
+  
+  // Custom render function that passes the shared state
+  const renderScene = ({ route }) => {
+    switch (route.key) {
+      case 'first':
+        return <Page1 vescState={sharedVescState} />;
+      case 'second':
+        return <Page2 />;
+      case 'third':
+        return <Page3 vescState={sharedVescState} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <TabView
@@ -26,7 +41,7 @@ export default function App() {
       renderScene={renderScene}
       onIndexChange={setIndex}
       initialLayout={{ width: layout.width }}
-      swipeEnabled={true} // Allows swiping
+      swipeEnabled={true}
       renderTabBar={props => (
         <TabBar
           {...props}
