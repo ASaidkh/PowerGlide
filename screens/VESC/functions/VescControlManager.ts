@@ -2,12 +2,18 @@ import { VescCommands } from './VescCommands';
 import { COMMANDS } from '../constants/vescCommands';
 
 export class VescControlManager {
+  commands : any;
+  state : any;
+  canID : number;
+
   constructor(vescCommands, stateManager) {
     this.commands = vescCommands;
     this.state = stateManager;
+    this.canID = 36;
   }
 
   startControl = () => {
+
     const { setControlInterval, setIsRunning } = this.state.setters;
 
     // Clear any existing interval
@@ -26,9 +32,12 @@ export class VescControlManager {
      // console.log("Current:", this.state.states.targetCurrent);
       //this.commands.setCurrent(latestCurrent);  // Send the current
 
-      const latestRPM = this.state.states.targetRPM;
-      console.log("RPM:", this.state.states.targetRPM);
-      this.commands.setRpmForVesc(36, latestRPM);  // Send the updated RPM
+      
+      console.log("Setting Right Motor RPM:", this.state.states.RightMotorRPM);
+      console.log("Setting Left Motor RPM:", this.state.states.LeftMotorRPM);
+
+      this.commands.setRpmLeft(this.canID, this.state.states.LeftMotorRPM);  // Set left RPM
+      this.commands.setRpmRight(this.state.states.RightMotorRPM);  // Set left RPM
     }, 1000);
 
     // Store the new interval and update the running state
@@ -44,8 +53,9 @@ export class VescControlManager {
       clearInterval(this.state.states.controlInterval);
     }
 
-    // Stop the control (set duty cycle to 0)
-    this.commands.setRpm(0); 
+    // Stop the control (set duty rpm to 0)
+    this.commands.setRpmLeft(this.canID, 0);  // Set left RPM
+    this.commands.setRpmRight(0);  // Set left RPM
 
     // Reset state
     setControlInterval(null);
