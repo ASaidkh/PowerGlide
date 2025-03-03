@@ -1,128 +1,107 @@
-import React, { useEffect } from 'react';
-import { SafeAreaView, View, Alert } from 'react-native';
-import { Device } from 'react-native-ble-plx';
-import { styles } from './VESC/styles/vescStyles';
-import { VescConnectionManager } from './VESC/functions/VescConnectionManager';
-import { VescControlManager } from './VESC/functions/VescControlManager';
-import { VescControls } from './VESC/components/VescControls';
-import { ValuesDisplay } from './VESC/components/ValuesDisplay';
-import { LoggingControls } from './VESC/components/LoggingControls';
-import { ScanningView } from './VESC/components/ScanningView';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from 'react-native';
+import RNBluetoothClassic, { BluetoothDevice } from 'react-native-bluetooth-classic';
+import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
-const Page1 = ({ vescState }) => {
-    const connectionManager = React.useRef(new VescConnectionManager()).current;
-    const [controlManager, setControlManager] = React.useState<VescControlManager | null>(null);
+const Page1 = () => {
+  const [devices, setDevices] = useState<BluetoothDevice[]>([]);
+  const [scanning, setScanning] = useState(false);
 
-
-    
-  
-  useEffect(() => {
-    // Whenever the vescState changes, update the controlManager with the latest state
-    if (controlManager) {
-        controlManager.updateState(vescState); // Assuming you add a method to VescControlManager for this
+  const requestBluetoothPermission = async () => {
+    try {
+      const result = await check(PERMISSIONS.ANDROID.BLUETOOTH_SCAN);
+      if (result === RESULTS.GRANTED) return true;
+      
+      const granted = await request(PERMISSIONS.ANDROID.BLUETOOTH_SCAN);
+      return granted === RESULTS.GRANTED;
+    } catch (error) {
+      console.error('Bluetooth permission error:', error);
+      return false;
     }
-}, [vescState, controlManager]);
+  };
 
+  const startScan = async () => {
+    const permissionGranted = await requestBluetoothPermission();
+    if (!permissionGranted) {
+      console.log('Bluetooth permission denied');
+      return;
+    }
+    
+    setScanning(true);
+    setDevices([]);
 
-    useEffect(() => {
-        return () => {
-            handleDisconnect();
-            connectionManager.destroy();
-        };
-    }, []);
-
-    const handleStartScan = async () => {
-        try {
-            vescState.setters.setIsScanning(true);
-            await connectionManager.startScanning((device: Device) => {
-                vescState.setters.setDevices(prev => {
-                    if (!prev.find(d => d.id === device.id)) {
-                        return [...prev, device];
-                    }
-                    return prev;
-                });
-            });
-        } catch (error) {
-            Alert.alert('Scan Error', 'Failed to start scanning for devices');
+    try {
+      const scanTimeout = setTimeout(() => {
+        setScanning(false);
+        if (devices.length === 0) {
+          Alert.alert('No devices found', 'Please make sure your Bluetooth device is discoverable.', [
+            { text: 'OK', onPress: () => setScanning(false) }
+          ]);
         }
-    };
+      }, 30000);
+      
+      const availableDevices = await RNBluetoothClassic.startDiscovery();
+      clearTimeout(scanTimeout);
+      setDevices(availableDevices);
+      setScanning(false);
+    } catch (error) {
+      console.error('Bluetooth scan error:', error);
+      setScanning(false);
+    }
+  };
 
-    const handleConnect = async (device: Device) => {
-        try {
-            vescState.setters.setIsScanning(false);
-            connectionManager.stopScanning();
-            
-            const vescCommands = await connectionManager.connect(device);
-            const newControlManager = new VescControlManager(vescCommands, vescState);
-            setControlManager(newControlManager);
-            
-            vescState.setters.setIsConnected(true);
-            vescState.states.isConnected = true;
-            console.log("isConnected: ", vescState.states.isConnected);
-            
-            // Start polling VESC values
-            vescCommands.getValues();
-            //vescCommands.pingCan();
-        } catch (error) {
-            Alert.alert('Connection Error', 'Failed to connect to device');
-        }
-    };
-
-    const handleDisconnect = async () => {
-        try {
-            await connectionManager.disconnect();
-            vescState.setters.setIsConnected(false);
-            setControlManager(null);
-        } catch (error) {
-            console.error('Disconnect error:', error);
-        }
-    };
-
-    return (
-        <SafeAreaView style={styles.container}>
-            {!vescState.states.isConnected ? (
-                <ScanningView 
-                    devices={vescState.states.devices}
-                    isScanning={vescState.states.isScanning}
-                    onScanStart={handleStartScan}
-                    onConnect={handleConnect}
-                />
-            ) : (
-                <View>
-                    <ValuesDisplay values={vescState.states.vescValues} />
-                    <VescControls 
-                        dutyCycle={vescState.states.dutyCycle}
-                        targetCurrent={vescState.states.targetCurrent}
-                        RightMotorRPM={vescState.states.RightMotorRPM}
-                        LeftMotorRPM={vescState.states.LeftMotorRPM}
-                        isRunning={vescState.states.isRunning}
-                        onDutyCycleChange={vescState.setters.setDutyCycle}
-                        onCurrentChange={vescState.setters.setTargetCurrent}
-                        onRightMotorRPMchange={vescState.setters.setRightMotorRPM}
-                        onLeftMotorRPMchange={vescState.setters.setLeftMotorRPM}
-                        onStartStop={() => {
-                            if (vescState.states.isRunning) {
-                                controlManager?.stopControl();
-                            } else {
-                                controlManager?.startControl();
-                            }
-                        }}
-                    />
-                    <LoggingControls 
-                        isLogging={vescState.states.isLogging}
-                        logData={vescState.states.logData}
-                        onToggleLogging={() => {
-                          if (vescState.states.isLogging) {
-                            controlManager?.startLogging();
-                        } else {
-                            controlManager?.stopLogging();
-                        }
-                        }}
-                    />
-                </View>
-            )}
-        </SafeAreaView>
-    );
+  return (
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.button} onPress={startScan} disabled={scanning}>
+        <Text style={styles.buttonText}>{scanning ? 'Scanning...' : 'Connect to SIM'}</Text>
+      </TouchableOpacity>
+      <FlatList
+        data={devices}
+        keyExtractor={(item) => item.address}
+        renderItem={({ item }) => (
+          <View style={styles.deviceItem}>
+            <Text style={styles.deviceText}>{item.name || 'Unknown Device'}</Text>
+            <Text style={styles.deviceText}>{item.address}</Text>
+          </View>
+        )}
+      />
+    </View>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'lightgreen',
+  },
+  button: {
+    backgroundColor: 'blue',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 5,
+    marginBottom: 20,
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -25 }],
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  deviceItem: {
+    backgroundColor: '#333',
+    padding: 10,
+    marginVertical: 5,
+    borderRadius: 5,
+    width: '90%',
+  },
+  deviceText: {
+    color: 'white',
+    fontSize: 16,
+  },
+});
 
 export default Page1;
