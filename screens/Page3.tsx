@@ -7,158 +7,190 @@ import {
   Animated, 
   SafeAreaView,
   TouchableOpacity,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 
-
 const Page3 = ({ vescState }) => {
-  // Get the VESC state from the global state manager
-  
   // Define constants inside the component
   const JOYSTICK_SIZE = 150;
   const HANDLE_SIZE = 50;
   const MAX_DISTANCE = (JOYSTICK_SIZE - HANDLE_SIZE) / 2;
-  const MAX_RPM = 10000; // Maximum RPM for the motors
-  const CAN_ID = 36; // CAN ID for the secondary VESC (left motor)
   
   // Joystick state
   const [joystickX, setJoystickX] = useState(0);
   const [joystickY, setJoystickY] = useState(0);
   
-  // Motor RPM state (local copies for display)
-  const [leftMotorRPM, setLeftMotorRPM] = useState(0);
-  const [rightMotorRPM, setRightMotorRPM] = useState(0);
-  
-  // Active state for enabling/disabling motor control
+  // Active state for enabling/disabling control
   const [isActive, setIsActive] = useState(false);
   
+  // Bluetooth data sending state
+  const [isSendingData, setIsSendingData] = useState(false);
+  const [lastSentTimestamp, setLastSentTimestamp] = useState(0);
+  const [sendSuccess, setSendSuccess] = useState(true);
+  const [sendAttempts, setSendAttempts] = useState(0);
+  const [lastError, setLastError] = useState(null);
+  
   // Control interval reference
-  const controlIntervalRef = useRef(null);
-  
-  // Animated values for the joystick position
-  const pan = useRef(new Animated.ValueXY()).current;
-
- 
-  
+  const bluetoothIntervalRef = useRef(null);
+  const joystickXRef = useRef(0);
+const joystickYRef = useRef(0);
+  // Check connection status changes
   useEffect(() => {
-    // This will run whenever vescState.states.isConnected changes
     console.log("Connection status in Page3:", vescState.states.isConnected);
-    // You could also set a local state here if needed
+    
+    // If disconnected while active, stop control
+    if (!vescState.states.isConnected && isActive) {
+      stopControl();
+      Alert.alert(
+        'Connection Lost',
+        'Bluetooth connection was lost. Please reconnect from the Connections page.'
+      );
+    }
   }, [vescState.states.isConnected]);
 
-  // Convert joystick position to motor RPM values
-  const calculateMotorRPM = (x, y) => {
-    // Convert normalized joystick values (-1 to 1) to motor RPM
-    
-    // Forward/backward motion (throttle) comes from Y axis
-    const throttle = y;
-    
-    // Steering comes from X axis
-    const steering = x;
-    
-    // Calculate left and right motor RPM using differential steering formula
-    let leftRPM, rightRPM;
-    
-    // Basic differential drive algorithm
-    if (throttle >= 0) {
-      // Moving forward
-      leftRPM = MAX_RPM * (throttle + steering);
-      rightRPM = MAX_RPM * (throttle - steering);
-    } else {
-      // Moving backward
-      leftRPM = MAX_RPM * (throttle - steering);
-      rightRPM = MAX_RPM * (throttle + steering);
-    }
-    
-    // Implement "turn in place" when there's steering but no throttle
-    if (Math.abs(throttle) < 0.1 && Math.abs(steering) > 0.1) {
-      leftRPM = MAX_RPM * steering;
-      rightRPM = -MAX_RPM * steering;
-    }
-    
-    // Clamp values to prevent exceeding MAX_RPM
-    leftRPM = Math.max(-MAX_RPM, Math.min(MAX_RPM, leftRPM));
-    rightRPM = Math.max(-MAX_RPM, Math.min(MAX_RPM, rightRPM));
-    
-    return { leftRPM, rightRPM };
-  };
+
+  useEffect(() => {
+    // Update refs to track current joystick values
+    joystickXRef.current = joystickX;
+    joystickYRef.current = joystickY;
+  }, [joystickX, joystickY]);
   
-  // Start sending commands to the VESC
+  // Start sending joystick commands via Bluetooth
   const startControl = () => {
     if (!vescState.states.isConnected) {
-      Alert.alert('Not Connected', 'Please connect to VESC first');
+      Alert.alert('Not Connected', 'Please connect to Bluetooth device first');
       return;
     }
     
     // Clear any existing interval
-    if (controlIntervalRef.current) {
-      clearInterval(controlIntervalRef.current);
+    if (bluetoothIntervalRef.current) {
+      clearInterval(bluetoothIntervalRef.current);
     }
     
     // Set the active flag
     setIsActive(true);
+    setIsSendingData(true);
+    setSendSuccess(true);
+    setSendAttempts(0);
+    setLastError(null);
     
-    // Start the control interval
-    controlIntervalRef.current = setInterval(() => {
-      const { leftRPM, rightRPM } = calculateMotorRPM(joystickX, joystickY);
-      
-      // Update local state for display
-      setLeftMotorRPM(Math.round(leftRPM));
-      setRightMotorRPM(Math.round(rightRPM));
-      
-      // Update the global state
-      vescState.setters.setLeftMotorRPM(Math.round(leftRPM));
-      vescState.setters.setRightMotorRPM(Math.round(rightRPM));
-      
-      // Send the commands
-      try {
-        // Access the control manager from Page1 via the global state
-        if (vescState.states.controlInterval) {
-          clearInterval(vescState.states.controlInterval);
-          vescState.setters.setControlInterval(null);
+    // Update joystick values in global state
+    //vescState.setters.setJoystickX(joystickX);
+    //vescState.setters.setJoystickY(joystickY);
+    
+    // Start the Bluetooth data sending interval
+    bluetoothIntervalRef.current = setInterval(async () => {
+      if (vescState.states.bluetoothDevice && vescState.states.isConnected) {
+        // Send joystick values over Bluetooth
+        try {
+          // Create data packet for Bluetooth
+          const data = {
+            type: 'joystick',
+            x: joystickXRef.current, // Use ref instead of captured state
+            y: joystickYRef.current, 
+            timestamp: Date.now()
+          };
+
+          console.log("Data preparing to send:", data);
+          
+          // Send data to the connected device
+          const success = await vescState.actions.sendDataToBluetooth(data);
+          
+          if (success) {
+            setLastSentTimestamp(Date.now());
+            setSendSuccess(true);
+            setSendAttempts(0);
+          } else {
+            setSendSuccess(false);
+            setSendAttempts(prev => prev + 1);
+            
+            // After 10 failed attempts, notify the user but keep trying
+            if (sendAttempts >= 10 && sendAttempts % 10 === 0) {
+              console.warn(`Failed to send data ${sendAttempts} times`);
+            }
+            
+            // After 50 failed attempts, stop control
+            if (sendAttempts >= 50) {
+              console.error('Max send attempts reached, stopping control');
+              stopControl();
+              Alert.alert(
+                'Connection Problem',
+                'Failed to send data multiple times. Please check your connection and try again.',
+                [{ text: 'OK' }]
+              );
+            }
+          }
+        } catch (error) {
+          console.error('Error sending Bluetooth data:', error);
+          setLastError(error.message || 'Unknown error');
+          setSendSuccess(false);
+          setSendAttempts(prev => prev + 1);
         }
-      } catch (error) {
-        console.error('Failed to clear previous control interval', error);
+      } else if (isActive) {
+        // If we lost connection while active, stop control
+        stopControl();
+        if (vescState.states.bluetoothDevice) {
+          Alert.alert(
+            'Connection Problem',
+            'The Bluetooth connection appears to be inactive. Please reconnect from the Connections page.',
+            [{ text: 'OK' }]
+          );
+        }
       }
-    }, 100); // Update at 10Hz
+    }, 100); // Send at 10Hz (adjust as needed for your application)
   };
   
   // Stop sending commands
   const stopControl = () => {
-    // Clear the control interval
-    if (controlIntervalRef.current) {
-      clearInterval(controlIntervalRef.current);
-      controlIntervalRef.current = null;
+    // Clear interval
+    if (bluetoothIntervalRef.current) {
+      clearInterval(bluetoothIntervalRef.current);
+      bluetoothIntervalRef.current = null;
     }
     
-    // Reset the active flag
+    // Reset all flags
     setIsActive(false);
+    setIsSendingData(false);
+    setSendSuccess(true);
+    setSendAttempts(0);
     
-    // Set motors to zero
-    setLeftMotorRPM(0);
-    setRightMotorRPM(0);
-    vescState.setters.setLeftMotorRPM(0);
-    vescState.setters.setRightMotorRPM(0);
+    // Reset joystick values
+    setJoystickX(0);
+    setJoystickY(0);
+    vescState.setters.setJoystickX(0);
+    vescState.setters.setJoystickY(0);
+    
+    // If still connected, send zero joystick values as final command
+    if (vescState.states.isConnected && vescState.states.bluetoothDevice) {
+      try {
+        vescState.actions.sendDataToBluetooth({
+          type: 'joystick',
+          x: joystickX,
+          y: joystickY,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        // Just log the error but don't alert the user since we're stopping anyway
+        console.error('Error sending stop command:', error);
+      }
+    }
   };
   
-  // Update motor commands when joystick moves
+  // Update joystick values in global state when they change
   useEffect(() => {
-    if (isActive && vescState.states.isConnected) {
-      const { leftRPM, rightRPM } = calculateMotorRPM(joystickX, joystickY);
-      setLeftMotorRPM(Math.round(leftRPM));
-      setRightMotorRPM(Math.round(rightRPM));
-      
-      // Update global state so Page1 can send these values
-      vescState.setters.setLeftMotorRPM(Math.round(leftRPM));
-      vescState.setters.setRightMotorRPM(Math.round(rightRPM));
+    if (isActive) {
+      vescState.setters.setJoystickX(joystickX);
+      vescState.setters.setJoystickY(joystickY);
+      console.log(`Joystick updated: X=${vescState.states.joystickX}, Y=${vescState.states.joystickY}`);
     }
   }, [joystickX, joystickY, isActive, vescState]);
   
   // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (controlIntervalRef.current) {
-        clearInterval(controlIntervalRef.current);
+      if (bluetoothIntervalRef.current) {
+        clearInterval(bluetoothIntervalRef.current);
       }
     };
   }, []);
@@ -217,6 +249,9 @@ const Page3 = ({ vescState }) => {
     })
   ).current;
 
+  // Animated values for the joystick position
+  const pan = useRef(new Animated.ValueXY()).current;
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Joystick Controller</Text>
@@ -226,18 +261,30 @@ const Page3 = ({ vescState }) => {
           styles.connectionText, 
           vescState.states.isConnected ? styles.connected : styles.disconnected
         ]}>
-          {vescState.states.isConnected ? 'VESC Connected' : 'VESC Disconnected'}
+          {vescState.states.isConnected ? 'Bluetooth Connected' : 'Bluetooth Disconnected'}
         </Text>
+        {isSendingData && (
+          <View>
+            <Text style={[
+              styles.sendingDataText,
+              !sendSuccess && styles.sendingErrorText
+            ]}>
+              {sendSuccess 
+                ? `Sending data... (Last: ${new Date(lastSentTimestamp).toLocaleTimeString()})` 
+                : `Connection issues (Attempts: ${sendAttempts})`
+              }
+            </Text>
+            {!sendSuccess && lastError && (
+              <Text style={styles.errorText}>Error: {lastError}</Text>
+            )}
+          </View>
+        )}
       </View>
       
       <View style={styles.valueContainer}>
         <View>
           <Text style={styles.valueText}>Joystick X: {joystickX.toFixed(2)}</Text>
           <Text style={styles.valueText}>Joystick Y: {joystickY.toFixed(2)}</Text>
-        </View>
-        <View>
-          <Text style={styles.valueText}>Left RPM: {leftMotorRPM}</Text>
-          <Text style={styles.valueText}>Right RPM: {rightMotorRPM}</Text>
         </View>
       </View>
       
@@ -255,13 +302,16 @@ const Page3 = ({ vescState }) => {
               startControl();
             }
           } else {
-            Alert.alert('Not Connected', 'Please connect to VESC on the Connections page first');
+            Alert.alert('Not Connected', 'Please connect to Bluetooth device on the Connections page first');
           }
         }}
         disabled={!vescState.states.isConnected}
       >
+        {isSendingData && !sendSuccess ? (
+          <ActivityIndicator color="white" size="small" style={styles.buttonSpinner} />
+        ) : null}
         <Text style={styles.buttonText}>
-          {isActive ? 'MOTORS ACTIVE' : 'MOTORS INACTIVE'}
+          {isActive ? 'SEND DATA ACTIVE' : 'SEND DATA INACTIVE'}
         </Text>
       </TouchableOpacity>
       
@@ -292,20 +342,39 @@ const Page3 = ({ vescState }) => {
       
       <View style={styles.instructionsContainer}>
         <Text style={styles.instructions}>
-          Drag the joystick to control motor speed and direction.
+          Drag the joystick to control and send data to the connected Bluetooth device.
         </Text>
         <Text style={styles.instructions}>
-          Y-axis: Forward/Reverse speed
+          Y-axis: Forward/Reverse motion
         </Text>
         <Text style={styles.instructions}>
           X-axis: Steering (turn left/right)
         </Text>
         <Text style={styles.instructions}>
           {vescState.states.isConnected 
-            ? 'Press the button above to activate motor control.' 
-            : 'Connect to your VESC on the Connections page first.'}
+            ? 'Press the button above to start sending joystick data.' 
+            : 'Connect to a Bluetooth device on the Connections page first.'}
         </Text>
       </View>
+      
+      {/* Troubleshooting Guide */}
+      {!sendSuccess && sendAttempts > 5 && (
+        <View style={styles.troubleshootingContainer}>
+          <Text style={styles.troubleshootingTitle}>Troubleshooting Tips:</Text>
+          <Text style={styles.troubleshooting}>
+            • Make sure the PC's Bluetooth is turned on and discoverable
+          </Text>
+          <Text style={styles.troubleshooting}>
+            • Try disconnecting and reconnecting from the Connections page
+          </Text>
+          <Text style={styles.troubleshooting}>
+            • Restart both the app and the server on your PC
+          </Text>
+          <Text style={styles.troubleshooting}>
+            • Check that Windows Bluetooth services are running
+          </Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -327,17 +396,34 @@ const styles = StyleSheet.create({
   connectionStatus: {
     padding: 10,
     borderRadius: 5,
-    marginBottom: 10
+    marginBottom: 10,
+    alignItems: 'center'
   },
   connectionText: {
     fontWeight: 'bold',
     fontSize: 16
+  },
+  sendingDataText: {
+    fontSize: 14,
+    color: '#3498db',
+    marginTop: 5
+  },
+  sendingErrorText: {
+    color: '#e74c3c'
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#e74c3c',
+    marginTop: 2
   },
   connected: {
     color: '#2ecc71'
   },
   disconnected: {
     color: '#e74c3c'
+  },
+  buttonSpinner: {
+    marginRight: 10
   },
   valueContainer: {
     flexDirection: 'row',
@@ -409,13 +495,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 5
   },
+  troubleshootingContainer: {
+    padding: 15,
+    backgroundColor: '#fff3cd',
+    borderColor: '#ffeeba',
+    borderWidth: 1,
+    borderRadius: 10,
+    marginTop: 10,
+    width: '90%'
+  },
+  troubleshootingTitle: {
+    fontWeight: 'bold',
+    color: '#856404',
+    marginBottom: 5
+  },
+  troubleshooting: {
+    color: '#856404',
+    fontSize: 13,
+    marginBottom: 3
+  },
   controlButton: {
     padding: 15,
     borderRadius: 10,
     marginVertical: 10,
     width: '80%',
     alignItems: 'center',
-    elevation: 3
+    elevation: 3,
+    flexDirection: 'row',
+    justifyContent: 'center'
   },
   activeButton: {
     backgroundColor: '#2ecc71' // Green when active
