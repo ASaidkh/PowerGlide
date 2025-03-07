@@ -106,7 +106,7 @@ export class VescControlManager {
       } catch (error) {
         console.error("Error getting VESC values:", error);
       }
-    }, 500); // Poll every 500ms for more responsive feedback
+    }, 200); // Poll every 500ms for more responsive feedback
   
     // Store the new interval
     setLoggingInterval(newLoggingInterval);
