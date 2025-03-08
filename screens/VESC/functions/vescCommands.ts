@@ -180,48 +180,50 @@ async parseVescValues(data: Buffer) {
     return crc;
   }
 
-async forwardCanFrame(canId: number, commandId: number, data: Buffer) {
+async forwardCanFrame(canId: number, CanCommandId: number, CommCommandId: number, data: Buffer) {
     // Frame ID needs to be 4 bytes total
     // VESC ID in lower 8 bits, Command ID in next 8 bits
-    const frameId = canId | (commandId << 8);
-    const frameIdBuffer = Buffer.alloc(4);
-    frameIdBuffer.writeUInt32BE(frameId);
+    const frameId = canId | (CanCommandId << 8);
+    const frameIdBuffer = Buffer.alloc(5);
+    
+    frameIdBuffer.writeInt32BE(frameId,0);
+    frameIdBuffer.writeUInt8(CommCommandId,4);
+   // frameIdBuffer.writeUInt8(isExtended,4);
+    //frameIdBuffer.writeUInt8(254,5);
+    
+    
 
     console.log("Frame ID buffer:", frameIdBuffer);
     
     // Data should stay in Big Endian
     const frameData = Array.from(frameIdBuffer).concat(Array.from(data));
 
-    // Add isExtended flag at the end
-    frameData.push(0); // 1 for extended CAN frame
-
     console.log("Complete CAN frame data:", frameData);
     
     await this.sendCommand(COMMANDS.CAN_FWD_FRAME, frameData);
 }
 
-async setRpmForVesc(canId: number, rpm: number) {
-   await this.setRpm(rpm);
+async setRpmLeft(canId: number, rpm: number) {
     // For CAN, data values should be Big Endian
     const buffer = Buffer.alloc(4);
-    buffer.writeInt32BE(Math.round(rpm), 0);  // Use BE for values
+    buffer.writeInt32BE(rpm, 0);  // Use BE for values
 
     console.log("CAN RPM BUFFER:", buffer);
-    // CAN_PACKET_SET_RPM = 3
-    await this.forwardCanFrame(canId, 3, buffer);
+    
+    await this.forwardCanFrame(canId, COMMANDS.CAN_PACKET_SET_RPM, COMMANDS.SET_RPM, buffer);
 }
+
+
 
   async setDuty(duty: number) {
     // Clamp duty cycle between -1 and 1
     duty = Math.max(-1, Math.min(1, duty));
 
-    // Use a lower scaling factor for more granular control
-    // The firmware typically uses different scaling factors
     const scaledDuty = Math.round(duty * 100000);
 
     // Convert the scaled duty to a 32-bit signed integer (int32)
     const buffer = Buffer.alloc(4); // 4 bytes for a 32-bit integer
-    buffer.writeInt32BE(scaledDuty, 0); // Store as a 32-bit integer in little-endian format
+    buffer.writeInt32BE(scaledDuty, 0); // Store as a 32-bit integer in big-endian format
   
     console.log("Scaled Duty Cycle (int32): ", scaledDuty, "Original Duty:", duty);
     
@@ -231,7 +233,9 @@ async setRpmForVesc(canId: number, rpm: number) {
     // Send the command with the duty data
     await this.sendCommand(COMMANDS.SET_DUTY, dutyData);
 }
-async setRpm(rpm: number) {
+
+
+async setRpmRight(rpm: number) {
   // No scaling needed for RPM as per VESC firmware
   const scaledRpm = Math.round(rpm); // Just round to ensure integer
 
