@@ -48,38 +48,35 @@ const Page1 = ({ vescState }) => {
     };
 
     const handleConnect = async (device: Device) => {
-      try {
-          vescState.setters.setIsScanning(false);
-          connectionManager.stopScanning();
-          
-          const vescCommands = await connectionManager.connect(device);
-          const newControlManager = new VescControlManager(vescCommands, vescState);
-          setControlManager(newControlManager);
-          
-          vescState.setters.setIsConnected(true);
-          
-          // Start continuous logging of VESC values
-          newControlManager.startContinuousLogging();
-          
-      } catch (error) {
-          Alert.alert('Connection Error', 'Failed to connect to device');
-      }
-  };
-  
-  const handleDisconnect = async () => {
-      try {
-          // Stop logging first
-          if (controlManager) {
-              controlManager.stopLogging();
-          }
-          
-          await connectionManager.disconnect();
-          vescState.setters.setIsConnected(false);
-          setControlManager(null);
-      } catch (error) {
-          console.error('Disconnect error:', error);
-      }
-  };
+        try {
+            vescState.setters.setIsScanning(false);
+            connectionManager.stopScanning();
+            
+            const vescCommands = await connectionManager.connect(device);
+            const newControlManager = new VescControlManager(vescCommands, vescState);
+            setControlManager(newControlManager);
+            
+            vescState.setters.setIsConnected(true);
+            vescState.states.isConnected = true;
+            console.log("isConnected: ", vescState.states.isConnected);
+            
+            // Start polling VESC values
+            vescCommands.getValues();
+            //vescCommands.pingCan();
+        } catch (error) {
+            Alert.alert('Connection Error', 'Failed to connect to device');
+        }
+    };
+
+    const handleDisconnect = async () => {
+        try {
+            await connectionManager.disconnect();
+            vescState.setters.setIsConnected(false);
+            setControlManager(null);
+        } catch (error) {
+            console.error('Disconnect error:', error);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -111,17 +108,17 @@ const Page1 = ({ vescState }) => {
                             }
                         }}
                     />
-                  <LoggingControls 
-                  isLogging={vescState.states.isLogging}
-                  logData={vescState.states.logData}
-                  onToggleLogging={() => {
-                      if (!vescState.states.isLogging) {  // NOT isLogging
-                          controlManager?.startLogging();
-                      } else {
-                          controlManager?.stopLogging();
-                      }
-                  }}
-              />
+                    <LoggingControls 
+                        isLogging={vescState.states.isLogging}
+                        logData={vescState.states.logData}
+                        onToggleLogging={() => {
+                          if (vescState.states.isLogging) {
+                            controlManager?.startLogging();
+                        } else {
+                            controlManager?.stopLogging();
+                        }
+                        }}
+                    />
                 </View>
             )}
         </SafeAreaView>

@@ -62,58 +62,33 @@ export class VescControlManager {
     setIsRunning(false);
   };
 
-  startContinuousLogging = () => {
-    const { setLoggingInterval, setVescValues } = this.state.setters;
+  startLogging = () => {
+    const { setLoggingInterval, setIsLogging } = this.state.setters;
   
     // Clear any existing logging interval
     if (this.state.states.loggingInterval) {
       clearInterval(this.state.states.loggingInterval);
     }
   
-    // Set new logging interval that continuously polls values
-    const newLoggingInterval = setInterval(async () => {
-      try {
-        const values = await this.commands.getValues();  // Get the values from the VESC
-        console.log("Received VESC values:", values);
-        
-        // Format the values for the state
-        const formattedValues = {
-          tempMosfet: values.temp_mos || 0,
-          tempMotor: values.temp_motor || 0,
-          currentMotor: values.current_motor || 0,
-          currentInput: values.current_in || 0,
-          dutyCycleNow: values.duty_now || 0,
-          rpm: values.rpm || 0,
-          voltage: values.v_in || 0,
-          ampHours: values.amp_hours || 0,
-          ampHoursCharged: values.amp_hours_charged || 0,
-          wattHours: values.watt_hours || 0,
-          wattHoursCharged: values.watt_hours_charged || 0,
-          tachometer: values.tachometer || 0,
-          tachometerAbs: values.tachometer_abs || 0
-        };
-        
-        // Update the global state with the received values
-        setVescValues(formattedValues);
-        
-        // Add to log data for historical tracking if needed
-        const logEntry = {
-          timestamp: new Date(),
-          fieldStart: 0,
-          values: Object.values(formattedValues)
-        };
-        this.state.setters.setLogData(prev => [...prev, logEntry]);
-      } catch (error) {
-        console.error("Error getting VESC values:", error);
-      }
-    }, 500); // Poll every 500ms for more responsive feedback
+    // Set new logging interval
+    const newLoggingInterval = setInterval(() => {
+      // Always use the latest state value for isLogging
+      const latestIsLogging = this.state.states.isLogging;
+      console.log("Logging:", latestIsLogging);
   
-    // Store the new interval
+      // Send the updated getValues command if logging is enabled
+      if (latestIsLogging) {
+        this.commands.getValues();  // Send the getValues command to fetch the data
+      }
+    }, 1000);
+  
+    // Store the new interval and update the logging state
     setLoggingInterval(newLoggingInterval);
+    setIsLogging(true);
   };
   
   stopLogging = () => {
-    const { setLoggingInterval } = this.state.setters;
+    const { setLoggingInterval, setIsLogging } = this.state.setters;
   
     // Clear the logging interval if it exists
     if (this.state.states.loggingInterval) {
@@ -122,6 +97,10 @@ export class VescControlManager {
   
     // Reset logging state
     setLoggingInterval(null);
+    setIsLogging(false);
+  
+    // Optionally stop logging and clear any active values or commands
+    this.commands.getValues();  // Optionally stop fetching values
   };
   
   // Method to update state dynamically
