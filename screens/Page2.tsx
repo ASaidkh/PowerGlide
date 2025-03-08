@@ -83,11 +83,6 @@ const Page2 = () => {
   const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: Face[]) => {
     setFaces(detectedFaces);
 
-    if (detectedFaces.length !== previousFaceCount) {
-      console.log(`Number of detected faces: ${detectedFaces.length}`);
-      setPreviousFaceCount(detectedFaces.length);
-    }
-
     if (detectedFaces.length === 0) return;
 
     const face = detectedFaces[0];
@@ -104,16 +99,13 @@ const Page2 = () => {
     const offsetPercentage = (faceCenter - centerX) / (frameWidth / 2);
     
     // Convert to degrees (assuming max turn is about 45 degrees)
-    // Negative values mean turning left, positive values mean turning right
     const calculatedAngle = -offsetPercentage * 45;
     
-    // Round to nearest degree
-    const roundedAngle = Math.round(calculatedAngle);
+    // Limit to 2 decimal places
+    const roundedAngle = parseFloat(calculatedAngle.toFixed(2)); // Rounds to 2 decimal places
     
     // Use face.yawAngle if available (more accurate)
-    const angle = face.yawAngle !== undefined ? face.yawAngle : roundedAngle;
-    
-    setHeadAngle(angle);
+    const angle = face.yawAngle !== undefined ? parseFloat(face.yawAngle.toFixed(2)) : roundedAngle;
 
     // Determine direction text based on angle
     let directionText = 'Neutral (0°)';
@@ -130,15 +122,21 @@ const Page2 = () => {
     const timeDifference = currentTime - lastLoggedTime;
     const angleDifference = Math.abs(angle - previousAngle);
 
-    // Update direction if angle changed by more than 5 degrees or if 15 seconds passed
+    // Update direction only if angle changed significantly or if time difference is > 15 seconds
     if (angleDifference >= 5 || timeDifference >= 15000) {
-      setHeadDirection(directionText);
-      setPreviousAngle(angle);
-      setLastLoggedTime(currentTime);
+      // Prevent unnecessary state updates to avoid infinite re-renders
+      if (timeDifference >= 15000) {
+        setHeadDirection(directionText);
+        setPreviousAngle(angle);
+        setLastLoggedTime(currentTime);
+      }
 
       console.log(`Face Direction: ${directionText}, Angle: ${angle}°`);
     }
   });
+
+
+
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
