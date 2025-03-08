@@ -15,8 +15,9 @@ const Page2 = () => {
   const { hasPermission: hasMicPermission, requestPermission: requestMicPermission } = useMicrophonePermission();
   const [showCamera, setShowCamera] = useState(false);
   const [faces, setFaces] = useState<Face[]>([]);
-  const [headDirection, setHeadDirection] = useState('Neutral');
-  const [previousDirection, setPreviousDirection] = useState('Neutral');
+  const [headDirection, setHeadDirection] = useState('Neutral (0°)');
+  const [headAngle, setHeadAngle] = useState(0);
+  const [previousAngle, setPreviousAngle] = useState(0);
   const [lastLoggedTime, setLastLoggedTime] = useState(0);
   const [appState, setAppState] = useState(AppState.currentState);
   const [micOn, setMicOn] = useState(false);  // Track microphone state
@@ -26,7 +27,7 @@ const Page2 = () => {
 
   const faceDetectionOptions = useRef<FaceDetectionOptions>({
     mode: 'accurate',
-    detectLandmarks: 'none',
+    detectLandmarks: 'all', // Changed from 'none' to 'all' to get more face data
     runClassifications: 'all',
   }).current;
 
@@ -93,30 +94,49 @@ const Page2 = () => {
 
     if (!face.bounds || !face.bounds.width) return;
 
+    // Calculate head turn angle
     const { x, width } = face.bounds;
     const frameWidth = 640;
-    const normalizedX = (x + width / 2) / frameWidth;
+    const centerX = frameWidth / 2;
+    const faceCenter = x + width / 2;
+    
+    // Calculate offset from center as a percentage of half the frame width
+    const offsetPercentage = (faceCenter - centerX) / (frameWidth / 2);
+    
+    // Convert to degrees (assuming max turn is about 45 degrees)
+    // Negative values mean turning left, positive values mean turning right
+    const calculatedAngle = -offsetPercentage * 45;
+    
+    // Round to nearest degree
+    const roundedAngle = Math.round(calculatedAngle);
+    
+    // Use face.yawAngle if available (more accurate)
+    const angle = face.yawAngle !== undefined ? face.yawAngle : roundedAngle;
+    
+    setHeadAngle(angle);
 
-    const LEFT_THRESHOLD = 0.3;
-    const RIGHT_THRESHOLD = 0.4;
-
-    let newDirection = 'Neutral';
-
-    if (normalizedX < LEFT_THRESHOLD) {
-      newDirection = 'Turning Left';
-    } else if (normalizedX > RIGHT_THRESHOLD) {
-      newDirection = 'Turning Right';
+    // Determine direction text based on angle
+    let directionText = 'Neutral (0°)';
+    
+    if (Math.abs(angle) < 5) {
+      directionText = 'Neutral (0°)';
+    } else if (angle < 0) {
+      directionText = `Left (${Math.abs(angle)}°)`;
+    } else {
+      directionText = `Right (${angle}°)`;
     }
 
     const currentTime = Date.now();
     const timeDifference = currentTime - lastLoggedTime;
+    const angleDifference = Math.abs(angle - previousAngle);
 
-    if (newDirection !== previousDirection || timeDifference >= 15000) {
-      setHeadDirection(newDirection);
-      setPreviousDirection(newDirection);
+    // Update direction if angle changed by more than 5 degrees or if 15 seconds passed
+    if (angleDifference >= 5 || timeDifference >= 15000) {
+      setHeadDirection(directionText);
+      setPreviousAngle(angle);
       setLastLoggedTime(currentTime);
 
-      console.log(`Face Direction: ${newDirection}`);
+      console.log(`Face Direction: ${directionText}, Angle: ${angle}°`);
     }
   });
 
@@ -149,6 +169,23 @@ const Page2 = () => {
           <TouchableOpacity style={styles.toggleButton} onPress={() => setShowCamera(false)}>
             <Text style={styles.buttonText}>Close Camera</Text>
           </TouchableOpacity>
+          
+          {/* Add angle indicator */}
+          <View style={styles.angleIndicator}>
+            <View style={styles.angleBar}>
+              <View 
+                style={[
+                  styles.anglePointer, 
+                  { left: `${50 + (headAngle / 90) * 50}%` }
+                ]} 
+              />
+            </View>
+            <View style={styles.angleLabels}>
+              <Text style={styles.angleLabel}>-45°</Text>
+              <Text style={styles.angleLabel}>0°</Text>
+              <Text style={styles.angleLabel}>45°</Text>
+            </View>
+          </View>
         </>
       ) : (
         <>
@@ -240,6 +277,36 @@ const styles = StyleSheet.create({
   commandText: {
     color: 'white',
     fontSize: 18,
+  },
+  angleIndicator: {
+    position: 'absolute',
+    top: 100,
+    width: '80%',
+    alignSelf: 'center',
+  },
+  angleBar: {
+    height: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 10,
+    position: 'relative',
+  },
+  anglePointer: {
+    position: 'absolute',
+    top: 0,
+    width: 4,
+    height: 20,
+    backgroundColor: 'red',
+    borderRadius: 2,
+    transform: [{ translateX: -2 }], // Center the pointer
+  },
+  angleLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
+  },
+  angleLabel: {
+    color: 'white',
+    fontSize: 12,
   },
 });
 
