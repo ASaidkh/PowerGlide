@@ -15,12 +15,13 @@ const Page2 = () => {
   const { hasPermission: hasMicPermission, requestPermission: requestMicPermission } = useMicrophonePermission();
   const [showCamera, setShowCamera] = useState(false);
   const [faces, setFaces] = useState<Face[]>([]);
-  const [headDirection, setHeadDirection] = useState('Neutral (0°)');
+  const [headDirection, setHeadDirection] = useState('Neutral');
   const [headAngle, setHeadAngle] = useState(0);
   const [previousAngle, setPreviousAngle] = useState(0);
   const [lastLoggedTime, setLastLoggedTime] = useState(0);
   const [appState, setAppState] = useState(AppState.currentState);
   const [micOn, setMicOn] = useState(false);  // Track microphone state
+  const [wasNeutral, setWasNeutral] = useState(true); // Track if the previous position was neutral
 
   // Destructure all return values from useVoskRecognition hook
   const { result, recognizing, modelLoaded, loadModel, startRecognition, stopRecognition } = useVoskRecognition();
@@ -107,36 +108,59 @@ const Page2 = () => {
     // Use face.yawAngle if available (more accurate)
     const angle = face.yawAngle !== undefined ? parseFloat(face.yawAngle.toFixed(2)) : roundedAngle;
 
-    // Determine direction text based on angle
-    let directionText = 'Neutral (0°)';
+    // Update the headAngle state for the live degree bar
+    setHeadAngle(angle);
+
+    // Check if the face is in neutral position
+    const isNeutral = Math.abs(angle) < 5;
+
+    // Determine simplified direction text for UI
+    let directionText = 'Neutral';
     
-    if (Math.abs(angle) < 5) {
-      directionText = 'Neutral (0°)';
-    } else if (angle < 0) {
-      directionText = `Left (${Math.abs(angle)}°)`;
-    } else {
-      directionText = `Right (${angle}°)`;
+    if (isNeutral) {
+      directionText = 'Neutral';
+    } else if (angle > 0) {  // positive angle means left
+      directionText = 'Left';
+    } else {                 // negative angle means right
+      directionText = 'Right';
+    }
+
+    // Create detailed direction text for logging
+    let detailedDirectionText = 'Neutral (0°)';
+    
+    if (isNeutral) {
+      detailedDirectionText = 'Neutral (0°)';
+    } else if (angle > 0) {  // positive angle means left
+      detailedDirectionText = `Left (${Math.abs(angle)}°)`;
+    } else {                 // negative angle means right
+      detailedDirectionText = `Right (${Math.abs(angle)}°)`;
     }
 
     const currentTime = Date.now();
     const timeDifference = currentTime - lastLoggedTime;
     const angleDifference = Math.abs(angle - previousAngle);
 
-    // Update direction only if angle changed significantly or if time difference is > 15 seconds
-    if (angleDifference >= 5 || timeDifference >= 15000) {
-      // Prevent unnecessary state updates to avoid infinite re-renders
-      if (timeDifference >= 15000) {
+    // Determine if we should log based on:
+    // 1. Significant angle change, or
+    // 2. Time interval passed, or
+    // 3. Transition to neutral from non-neutral, or
+    // 4. Transition from neutral to non-neutral
+    const transitionToNeutral = !wasNeutral && isNeutral;
+    const transitionFromNeutral = wasNeutral && !isNeutral;
+    
+    if (angleDifference >= 5 || timeDifference >= 15000 || transitionToNeutral || transitionFromNeutral) {
+      // Update state
+      if (directionText !== headDirection || timeDifference >= 15000 || transitionToNeutral || transitionFromNeutral) {
         setHeadDirection(directionText);
         setPreviousAngle(angle);
         setLastLoggedTime(currentTime);
+        setWasNeutral(isNeutral);
       }
 
-      console.log(`Face Direction: ${directionText}, Angle: ${angle}°`);
+      // Always log when conditions are met
+      console.log(`Face Direction: ${detailedDirectionText}, Angle: ${angle}°`);
     }
   });
-
-
-
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
@@ -168,13 +192,13 @@ const Page2 = () => {
             <Text style={styles.buttonText}>Close Camera</Text>
           </TouchableOpacity>
           
-          {/* Add angle indicator */}
+          {/* Live angle indicator that moves with the user's face */}
           <View style={styles.angleIndicator}>
             <View style={styles.angleBar}>
               <View 
                 style={[
                   styles.anglePointer, 
-                  { left: `${50 + (headAngle / 90) * 50}%` }
+                  { left: `${50 - (headAngle / 45) * 50}%` }
                 ]} 
               />
             </View>
