@@ -38,7 +38,7 @@ export class VescControlManager {
 
       this.commands.setRpmLeft(this.canID, this.state.states.LeftMotorRPM);  // Set left RPM
       this.commands.setRpmRight(this.state.states.RightMotorRPM);  // Set left RPM
-    }, 1000);
+    }, 200);
 
     // Store the new interval and update the running state
     setControlInterval(newInterval);
@@ -106,7 +106,7 @@ export class VescControlManager {
       } catch (error) {
         console.error("Error getting VESC values:", error);
       }
-    }, 200); // Poll every 500ms for more responsive feedback
+    }, 500); // Poll every 500ms for more responsive feedback
   
       // Send the updated getValues command if logging is enabled
       if (latestIsLogging) {
