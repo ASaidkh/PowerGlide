@@ -38,7 +38,7 @@ export class VescControlManager {
 
       this.commands.setRpmLeft(this.canID, this.state.states.LeftMotorRPM);  // Set left RPM
       this.commands.setRpmRight(this.state.states.RightMotorRPM);  // Set left RPM
-    }, 1000);
+    }, 200);
 
     // Store the new interval and update the running state
     setControlInterval(newInterval);
