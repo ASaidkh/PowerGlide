@@ -14,6 +14,20 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		7699B88040F8A987B510C191 /* libPods-MyApp-MyAppTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-MyApp-MyAppTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		033DD55507A14A97A07AFF38 /* final.mdl in Resources */ = {isa = PBXBuildFile; fileRef = 5CCA04F0DCF54CB994BA9193 /* final.mdl */; };
+		669CFD8CA6FB492C85B29B28 /* mfcc.conf in Resources */ = {isa = PBXBuildFile; fileRef = C7B95BEC48794884AA059BC5 /* mfcc.conf */; };
+		85906BE2F156438DB6D68243 /* model.conf in Resources */ = {isa = PBXBuildFile; fileRef = A87F2201E4D9460B91D703AA /* model.conf */; };
+		8A14BCE2453B4036BD887AD4 /* disambig_tid.int in Resources */ = {isa = PBXBuildFile; fileRef = 0DFCCD3D7E954456ADCBD6F6 /* disambig_tid.int */; };
+		DE122D081C9E4C31BA3EBDA3 /* Gr.fst in Resources */ = {isa = PBXBuildFile; fileRef = 6944829A0E684C92902A41F7 /* Gr.fst */; };
+		6C245BF0EF814279AA4DCC76 /* HCLr.fst in Resources */ = {isa = PBXBuildFile; fileRef = 4DA36CA210DE48F18B4B3782 /* HCLr.fst */; };
+		2BF4B8A6CE1744DEAB76F745 /* word_boundary.int in Resources */ = {isa = PBXBuildFile; fileRef = 8AD8570DBDED47E3960F57C4 /* word_boundary.int */; };
+		D513F74A85894A459875E2FA /* final.dubm in Resources */ = {isa = PBXBuildFile; fileRef = 776EEF048AC54BCB8716722C /* final.dubm */; };
+		07C08D36971444E488CED787 /* final.ie in Resources */ = {isa = PBXBuildFile; fileRef = 40E53C71A7C14646BEFDF93C /* final.ie */; };
+		12074DB5734645358EB85D71 /* final.mat in Resources */ = {isa = PBXBuildFile; fileRef = 8F82B905F50D4233AD88F83C /* final.mat */; };
+		40476A3E27EC4DE2A8721E31 /* global_cmvn.stats in Resources */ = {isa = PBXBuildFile; fileRef = 3E08EA6F0E5240BBADA830B8 /* global_cmvn.stats */; };
+		02FC1613CA2A4CB89F643E2B /* online_cmvn.conf in Resources */ = {isa = PBXBuildFile; fileRef = 517FB747A2DA4F43A14C260E /* online_cmvn.conf */; };
+		2AA4001FC05248A2BA74F61F /* splice.conf in Resources */ = {isa = PBXBuildFile; fileRef = 73735A249818491E997B9F33 /* splice.conf */; };
+		A57EF68C83F24C6AAF4008CC /* uuid in Resources */ = {isa = PBXBuildFile; fileRef = 8F3C4B9605D44032B4C87832 /* uuid */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +59,20 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MyApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-MyApp-MyAppTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyApp-MyAppTests.release.xcconfig"; path = "Target Support Files/Pods-MyApp-MyAppTests/Pods-MyApp-MyAppTests.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		5CCA04F0DCF54CB994BA9193 /* final.mdl */ = {isa = PBXFileReference; name = "final.mdl"; path = "../assets/model/vosk-model-small-en-us-0.15/am/final.mdl"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		C7B95BEC48794884AA059BC5 /* mfcc.conf */ = {isa = PBXFileReference; name = "mfcc.conf"; path = "../assets/model/vosk-model-small-en-us-0.15/conf/mfcc.conf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		A87F2201E4D9460B91D703AA /* model.conf */ = {isa = PBXFileReference; name = "model.conf"; path = "../assets/model/vosk-model-small-en-us-0.15/conf/model.conf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		0DFCCD3D7E954456ADCBD6F6 /* disambig_tid.int */ = {isa = PBXFileReference; name = "disambig_tid.int"; path = "../assets/model/vosk-model-small-en-us-0.15/graph/disambig_tid.int"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		6944829A0E684C92902A41F7 /* Gr.fst */ = {isa = PBXFileReference; name = "Gr.fst"; path = "../assets/model/vosk-model-small-en-us-0.15/graph/Gr.fst"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		4DA36CA210DE48F18B4B3782 /* HCLr.fst */ = {isa = PBXFileReference; name = "HCLr.fst"; path = "../assets/model/vosk-model-small-en-us-0.15/graph/HCLr.fst"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		8AD8570DBDED47E3960F57C4 /* word_boundary.int */ = {isa = PBXFileReference; name = "word_boundary.int"; path = "../assets/model/vosk-model-small-en-us-0.15/graph/phones/word_boundary.int"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		776EEF048AC54BCB8716722C /* final.dubm */ = {isa = PBXFileReference; name = "final.dubm"; path = "../assets/model/vosk-model-small-en-us-0.15/ivector/final.dubm"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		40E53C71A7C14646BEFDF93C /* final.ie */ = {isa = PBXFileReference; name = "final.ie"; path = "../assets/model/vosk-model-small-en-us-0.15/ivector/final.ie"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		8F82B905F50D4233AD88F83C /* final.mat */ = {isa = PBXFileReference; name = "final.mat"; path = "../assets/model/vosk-model-small-en-us-0.15/ivector/final.mat"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		3E08EA6F0E5240BBADA830B8 /* global_cmvn.stats */ = {isa = PBXFileReference; name = "global_cmvn.stats"; path = "../assets/model/vosk-model-small-en-us-0.15/ivector/global_cmvn.stats"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		517FB747A2DA4F43A14C260E /* online_cmvn.conf */ = {isa = PBXFileReference; name = "online_cmvn.conf"; path = "../assets/model/vosk-model-small-en-us-0.15/ivector/online_cmvn.conf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		73735A249818491E997B9F33 /* splice.conf */ = {isa = PBXFileReference; name = "splice.conf"; path = "../assets/model/vosk-model-small-en-us-0.15/ivector/splice.conf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		8F3C4B9605D44032B4C87832 /* uuid */ = {isa = PBXFileReference; name = "uuid"; path = "../assets/model/vosk-model-small-en-us-0.15/uuid"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +152,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				57C8C35E5EF841E19EDDD8C6 /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -149,6 +178,28 @@
 			);
 			path = Pods;
 			sourceTree = "<group>";
+		};
+		57C8C35E5EF841E19EDDD8C6 /* Resources */ = {
+			isa = "PBXGroup";
+			children = (
+				5CCA04F0DCF54CB994BA9193 /* final.mdl */,
+				C7B95BEC48794884AA059BC5 /* mfcc.conf */,
+				A87F2201E4D9460B91D703AA /* model.conf */,
+				0DFCCD3D7E954456ADCBD6F6 /* disambig_tid.int */,
+				6944829A0E684C92902A41F7 /* Gr.fst */,
+				4DA36CA210DE48F18B4B3782 /* HCLr.fst */,
+				8AD8570DBDED47E3960F57C4 /* word_boundary.int */,
+				776EEF048AC54BCB8716722C /* final.dubm */,
+				40E53C71A7C14646BEFDF93C /* final.ie */,
+				8F82B905F50D4233AD88F83C /* final.mat */,
+				3E08EA6F0E5240BBADA830B8 /* global_cmvn.stats */,
+				517FB747A2DA4F43A14C260E /* online_cmvn.conf */,
+				73735A249818491E997B9F33 /* splice.conf */,
+				8F3C4B9605D44032B4C87832 /* uuid */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+			path = "";
 		};
 /* End PBXGroup section */
 
@@ -245,6 +296,20 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				033DD55507A14A97A07AFF38 /* final.mdl in Resources */,
+				669CFD8CA6FB492C85B29B28 /* mfcc.conf in Resources */,
+				85906BE2F156438DB6D68243 /* model.conf in Resources */,
+				8A14BCE2453B4036BD887AD4 /* disambig_tid.int in Resources */,
+				DE122D081C9E4C31BA3EBDA3 /* Gr.fst in Resources */,
+				6C245BF0EF814279AA4DCC76 /* HCLr.fst in Resources */,
+				2BF4B8A6CE1744DEAB76F745 /* word_boundary.int in Resources */,
+				D513F74A85894A459875E2FA /* final.dubm in Resources */,
+				07C08D36971444E488CED787 /* final.ie in Resources */,
+				12074DB5734645358EB85D71 /* final.mat in Resources */,
+				40476A3E27EC4DE2A8721E31 /* global_cmvn.stats in Resources */,
+				02FC1613CA2A4CB89F643E2B /* online_cmvn.conf in Resources */,
+				2AA4001FC05248A2BA74F61F /* splice.conf in Resources */,
+				A57EF68C83F24C6AAF4008CC /* uuid in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
