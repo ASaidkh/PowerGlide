@@ -37,7 +37,7 @@ export default function useVoskRecognition() {
     }
 
     vosk
-      .start({ grammar: ['go', 'reverse', 'speed one', 'speed two', 'speed three', 'stop', 'left', 'right', 'help me'] })
+      .start({ grammar: ['go', 'reverse', 'speed one', 'speed two', 'speed three', 'speed five', 'speed four', 'stop', 'left', 'right', 'help me', 'faster', 'slower'] })
       .then(() => {
         setRecognizing(true);
         setPreviousRecognizing(true); // Update previousRecognizing

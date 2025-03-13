@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking, AppState } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission, useFrameProcessor } from 'react-native-vision-camera';
 import { useFaceDetector, Face, FaceDetectionOptions } from 'react-native-vision-camera-face-detector';
@@ -6,10 +6,11 @@ import { Worklets } from 'react-native-worklets-core';
 import Reanimated from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import useVoskRecognition from '../hooks/UseVoskRecognition'; // Import the custom hook
+import { Command } from '../App'; // Import the Command type
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);
 
-const Page2 = () => {
+const Page2 = ({ addCommand, commandBuffer }) => {
   const device = useCameraDevice('front');
   const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
   const { hasPermission: hasMicPermission, requestPermission: requestMicPermission } = useMicrophonePermission();
@@ -64,6 +65,13 @@ const Page2 = () => {
     }
   }, [modelLoaded, micOn, startRecognition, stopRecognition]);
 
+  // Process voice commands when result changes
+  useEffect(() => {
+    if (result) {
+      processVoiceCommand(result);
+    }
+  }, [result]);
+
   const requestPermissions = async () => {
     const cameraGranted = await requestCameraPermission();
     const micGranted = await requestMicPermission();
@@ -79,7 +87,28 @@ const Page2 = () => {
     }
   };
 
-  const [previousFaceCount, setPreviousFaceCount] = useState(0);
+  // Process voice commands
+  const processVoiceCommand = useCallback((text: string) => {
+    const command = text.toLowerCase();
+    
+    // List of valid voice commands
+    const validCommands = [
+      'go', 'reverse', 'speed one', 'speed two', 'speed three',
+      'stop', 'left', 'right', 'help me'
+    ];
+    
+    // Check if any valid command is in the voice result
+    for (const validCommand of validCommands) {
+      if (command.includes(validCommand)) {
+        addCommand({
+          type: 'voice',
+          value: validCommand
+        });
+        console.log(`Voice command added: ${validCommand}`);
+        break; // Only add one command per voice input
+      }
+    }
+  }, [addCommand]);
 
   const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: Face[]) => {
     setFaces(detectedFaces);
@@ -125,17 +154,6 @@ const Page2 = () => {
       directionText = 'Right';
     }
 
-    // Create detailed direction text for logging
-    let detailedDirectionText = 'Neutral (0°)';
-    
-    if (isNeutral) {
-      detailedDirectionText = 'Neutral (0°)';
-    } else if (angle > 0) {  // positive angle means left
-      detailedDirectionText = `Left (${Math.abs(angle)}°)`;
-    } else {                 // negative angle means right
-      detailedDirectionText = `Right (${Math.abs(angle)}°)`;
-    }
-
     const currentTime = Date.now();
     const timeDifference = currentTime - lastLoggedTime;
     const angleDifference = Math.abs(angle - previousAngle);
@@ -157,8 +175,15 @@ const Page2 = () => {
         setWasNeutral(isNeutral);
       }
 
-      // Always log when conditions are met
-      console.log(`Face Direction: ${detailedDirectionText}, Angle: ${angle}°`);
+      // Add direction command to the buffer if not neutral
+      if (!isNeutral) {
+        addCommand({
+          type: 'direction',
+          value: directionText.toLowerCase(),
+          angle: angle
+        });
+        console.log(`Direction command added: ${directionText} (${angle}°)`);
+      }
     }
   });
 
@@ -188,18 +213,12 @@ const Page2 = () => {
               console.error('Camera error:', error);
             }}
           />
-          <TouchableOpacity style={styles.toggleButton} onPress={() => setShowCamera(false)}>
-            <Text style={styles.buttonText}>Close Camera</Text>
-          </TouchableOpacity>
           
           {/* Live angle indicator that moves with the user's face */}
           <View style={styles.angleIndicator}>
             <View style={styles.angleBar}>
               <View 
-                style={[
-                  styles.anglePointer, 
-                  { left: `${50 - (headAngle / 45) * 50}%` }
-                ]} 
+                style={[styles.anglePointer, { left: `${50 - (headAngle / 45) * 50}%` }]} 
               />
             </View>
             <View style={styles.angleLabels}>
@@ -207,6 +226,20 @@ const Page2 = () => {
               <Text style={styles.angleLabel}>0°</Text>
               <Text style={styles.angleLabel}>45°</Text>
             </View>
+          </View>
+          
+          <View style={styles.headDirectionTop}>
+            <Text style={styles.headDirectionText}>Face: {headDirection}</Text>
+          </View>
+          
+          {/* Command display for debugging */}
+          <View style={styles.commandDisplay}>
+            <Text style={styles.commandTitle}>Last 3 Commands:</Text>
+            {commandBuffer.slice(-3).map((cmd, index) => (
+              <Text key={index} style={styles.commandText}>
+                {cmd.type}: {cmd.value} {cmd.angle ? `(${cmd.angle.toFixed(1)}°)` : ''}
+              </Text>
+            ))}
           </View>
         </>
       ) : (
@@ -219,64 +252,80 @@ const Page2 = () => {
         </>
       )}
 
-      <View style={styles.headDirectionTop}>
-        <Text style={styles.headDirectionText}>Face: {headDirection}</Text>
+      <View style={styles.micButtonContainer}>
+        <TouchableOpacity onPress={toggleMic} style={[styles.micButton, micOn ? styles.micActive : null]}>
+          <Text style={styles.buttonText}>{micOn ? 'Stop Mic' : 'Start Mic'}</Text>
+        </TouchableOpacity>
       </View>
-
-      {/* Display the recognized voice command */}
-      <View style={styles.commandContainer}>
-        <Text style={styles.commandText}>Voice Command: {result}</Text>
-      </View>
-
-      {/* Mic on/off toggle */}
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={toggleMic}
-      >
-        <Text style={styles.buttonText}>{micOn ? 'Turn Off Mic' : 'Turn On Mic'}</Text>
-      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'black',
+  page: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'black' 
   },
-  icon: {
-    marginBottom: 10,
+  button: { 
+    padding: 10, 
+    backgroundColor: '#007AFF', 
+    borderRadius: 5, 
+    margin: 20 
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    fontFamily: 'Arial',
-    color: 'white',
-    textAlign: 'center',
+  buttonText: { 
+    color: 'white', 
+    fontSize: 18 
   },
-  button: {
-    backgroundColor: 'blue',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 5,
-    marginTop: 20,
+  icon: { 
+    marginBottom: 30 
   },
-  toggleButton: {
-    position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
-    backgroundColor: 'red',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 5,
+  title: { 
+    fontSize: 24, 
+    color: 'white' 
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
+  micButtonContainer: { 
+    position: 'absolute', 
+    bottom: 50 
+  },
+  micButton: { 
+    padding: 10, 
+    backgroundColor: '#00BFFF', 
+    borderRadius: 5 
+  },
+  micActive: {
+    backgroundColor: '#FF4500' // Orange-red when mic is active
+  },
+  angleIndicator: { 
+    position: 'absolute', 
+    bottom: 100, 
+    width: '90%', 
+    alignItems: 'center' 
+  },
+  angleBar: { 
+    width: '100%', 
+    height: 10, 
+    backgroundColor: 'lightgrey', 
+    position: 'relative',
+    borderRadius: 5
+  },
+  anglePointer: { 
+    position: 'absolute', 
+    top: -5, 
+    width: 20, 
+    height: 20, 
+    backgroundColor: 'blue', 
+    borderRadius: 10 
+  },
+  angleLabels: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    width: '100%' 
+  },
+  angleLabel: { 
+    color: 'white', 
+    fontSize: 12 
   },
   headDirectionTop: {
     position: 'absolute',
@@ -289,47 +338,23 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
   },
-  commandContainer: {
+  commandDisplay: {
     position: 'absolute',
-    bottom: 100,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+    top: 100,
+    left: 20,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 10,
+    borderRadius: 5
+  },
+  commandTitle: {
+    color: 'white',
+    fontWeight: 'bold',
+    marginBottom: 5
   },
   commandText: {
     color: 'white',
-    fontSize: 18,
-  },
-  angleIndicator: {
-    position: 'absolute',
-    top: 100,
-    width: '80%',
-    alignSelf: 'center',
-  },
-  angleBar: {
-    height: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 10,
-    position: 'relative',
-  },
-  anglePointer: {
-    position: 'absolute',
-    top: 0,
-    width: 4,
-    height: 20,
-    backgroundColor: 'red',
-    borderRadius: 2,
-    transform: [{ translateX: -2 }], // Center the pointer
-  },
-  angleLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 5,
-  },
-  angleLabel: {
-    color: 'white',
-    fontSize: 12,
-  },
+    fontSize: 14
+  }
 });
 
 export default Page2;
