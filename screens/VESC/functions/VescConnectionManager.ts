@@ -3,7 +3,7 @@ import { VescCommands } from './vescCommands';
 import { BLE_UUIDS } from '../constants/VescCommands';
 import { PacketAssembly } from './PacketAssembly';
 import { Buffer } from 'buffer';
-
+import { Platform } from 'react-native';
 export class VescConnectionManager {
     private bleManager: BleManager;
     private device: Device | null;
@@ -50,6 +50,18 @@ export class VescConnectionManager {
     connect = async (device: Device) => {
         try {
             const connectedDevice = await device.connect();
+            
+            // Request high-priority connection for faster communication (Android only)
+            if (Platform.OS === 'android') {
+                try {
+                    // ConnectionPriority.HIGH = 1 in react-native-ble-plx
+                    await connectedDevice.requestConnectionPriority(1); // or use ConnectionPriority.HIGH if imported
+                    console.log('[BLE] Requested high-priority connection');
+                } catch (priorityError) {
+                    console.error('[BLE] Failed to set connection priority:', priorityError);
+                    // Continue anyway, this is just an optimization
+                }
+            }
             const discoveredDevice = await connectedDevice.discoverAllServicesAndCharacteristics();
             
             // Get the UART service

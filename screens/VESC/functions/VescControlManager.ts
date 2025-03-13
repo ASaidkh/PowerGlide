@@ -43,9 +43,9 @@ export class VescControlManager {
       console.log("Setting Right Motor RPM:", this.state.states.RightMotorRPM);
       console.log("Setting Left Motor RPM:", this.state.states.LeftMotorRPM);
 
-      this.commands.setRpmLeft(this.canID, this.state.states.LeftMotorRPM);  // Set left RPM
-      this.commands.setRpmRight(this.state.states.RightMotorRPM);  // Set right RPM
-    }, 1000);
+      this.commands.setRpmRight(this.canID, this.state.states.LeftMotorRPM);  // Set left RPM
+      this.commands.setRpmLeft(this.state.states.RightMotorRPM);  // Set right RPM
+    }, 200);
 
     // Store the new interval and update the running state
     setControlInterval(newInterval);
@@ -67,8 +67,8 @@ export class VescControlManager {
     this.stopCommandProcessing();
 
     // Stop the control (set rpm to 0)
-    this.commands.setRpmLeft(this.canID, 0);  // Set left RPM
-    this.commands.setRpmRight(0);  // Set right RPM
+    this.commands.setRpmRight(this.canID, 0);  // Set left RPM
+    this.commands.setRpmLeft(0);  // Set right RPM
 
     // Reset state
     setControlInterval(null);
@@ -120,7 +120,7 @@ export class VescControlManager {
       } catch (error) {
         console.error("Error getting VESC values:", error);
       }
-    }, 200); // Poll every 200ms for more responsive feedback
+    }, 20000); // Poll every 200ms for more responsive feedback
   
     // Store the new interval
     setLoggingInterval(newLoggingInterval);
@@ -217,14 +217,14 @@ export class VescControlManager {
     switch (value) {
       case 'go':
         // Set both motors to a moderate forward speed
-        this.state.setters.setLeftMotorRPM(3000);
-        this.state.setters.setRightMotorRPM(3000);
+        this.state.setters.setLeftMotorRPM(1000);
+        this.state.setters.setRightMotorRPM(1000);
         break;
         
       case 'reverse':
         // Set both motors to a moderate reverse speed
-        this.state.setters.setLeftMotorRPM(-2000);
-        this.state.setters.setRightMotorRPM(-2000);
+        this.state.setters.setLeftMotorRPM(-1000);
+        this.state.setters.setRightMotorRPM(-1000);
         break;
         
       case 'stop':
@@ -323,8 +323,8 @@ export class VescControlManager {
     this.state.setters.setRightMotorRPM(0);
     
     // Send emergency stop commands directly
-    this.commands.setRpmLeft(this.canID, 0);
-    this.commands.setRpmRight(0);
+    this.commands.setRpmRight(this.canID, 0);
+    this.commands.setRpmLeft(0);
     
     console.log('EMERGENCY STOP ACTIVATED');
   };

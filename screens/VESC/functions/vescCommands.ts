@@ -231,9 +231,9 @@ export class VescCommands {
     console.log(`[TIMING] forwardCanFrame completed in ${(endTime - startTime).toFixed(2)}ms`);
   }
 
-  async setRpmLeft(canId: number, rpm: number) {
+  async setRpmRight(canId: number, rpm: number) {
     const startTime = performance.now();
-    console.log(`[TIMING] setRpmLeft start - RPM: ${rpm}`);
+    console.log(`[TIMING] setRpmRight start - RPM: ${rpm}`);
     
     // For CAN, data values should be Big Endian
     const buffer = Buffer.alloc(4);
@@ -244,7 +244,7 @@ export class VescCommands {
     await this.forwardCanFrame(canId, COMMANDS.CAN_PACKET_SET_RPM, COMMANDS.SET_RPM, buffer);
     
     const endTime = performance.now();
-    console.log(`[TIMING] setRpmLeft completed in ${(endTime - startTime).toFixed(2)}ms`);
+    console.log(`[TIMING] setRpmRight completed in ${(endTime - startTime).toFixed(2)}ms`);
   }
 
 
@@ -269,9 +269,9 @@ export class VescCommands {
 }
 
 
-async setRpmRight(rpm: number) {
+async setRpmLeft(rpm: number) {
   const startTime = performance.now();
-  console.log(`[TIMING] setRpmRight start - RPM: ${rpm}`);
+  console.log(`[TIMING] setRpmLeft start - RPM: ${rpm}`);
   
   // No scaling needed for RPM as per VESC firmware
   const scaledRpm = Math.round(rpm); // Just round to ensure integer
@@ -289,7 +289,7 @@ async setRpmRight(rpm: number) {
   await this.sendCommand(COMMANDS.SET_RPM, rpmData);
   
   const endTime = performance.now();
-  console.log(`[TIMING] setRpmRight completed in ${(endTime - startTime).toFixed(2)}ms`);
+  console.log(`[TIMING] setRpmLeft completed in ${(endTime - startTime).toFixed(2)}ms`);
 }
   
   
