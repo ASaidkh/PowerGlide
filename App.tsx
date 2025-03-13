@@ -6,7 +6,13 @@ import Page2 from './screens/Page2';
 import Page3 from './screens/Page3';
 import { useVescState } from './screens/VESC/functions/VescStateManager';
 
-
+// Define a simple command type
+export interface Command {
+  type: string;  // 'direction' or 'voice'
+  value: string; // The actual command like 'left', 'go', etc.
+  angle?: number; // Optional angle for direction commands
+  timestamp: number;
+}
 
 // App.tsx
 export default function App() {
@@ -21,15 +27,41 @@ export default function App() {
   // Create a single shared state instance
   const sharedVescState = useVescState();
   
-  // Custom render function that passes the shared state
+  // Create a shared command buffer
+  const [commandBuffer, setCommandBuffer] = useState<Command[]>([]);
+  
+  // Function to add a command to the buffer
+  const addCommand = (command: Omit<Command, 'timestamp'>) => {
+    const newCommand: Command = {
+      ...command,
+      timestamp: Date.now()
+    };
+    setCommandBuffer(prev => [...prev, newCommand]);
+  };
+  
+  // Function to remove a command from the buffer
+  const removeCommand = (index: number) => {
+    setCommandBuffer(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  // Custom render function that passes the shared state and command buffer
   const renderScene = ({ route }) => {
     switch (route.key) {
       case 'first':
-        return <Page1 vescState={sharedVescState} />;
+        return <Page1 
+          vescState={sharedVescState} 
+          commandBuffer={commandBuffer}
+          removeCommand={removeCommand}
+        />;
       case 'second':
-        return <Page2 />;
+        return <Page2
+          addCommand={addCommand}
+          commandBuffer={commandBuffer}
+        />;
       case 'third':
-        return <Page3 vescState={sharedVescState} />;
+        return <Page3 
+          vescState={sharedVescState} 
+        />;
       default:
         return null;
     }
