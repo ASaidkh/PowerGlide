@@ -252,11 +252,16 @@ const Page2 = ({ addCommand, commandBuffer }) => {
         </>
       )}
 
-      <View style={styles.micButtonContainer}>
-        <TouchableOpacity onPress={toggleMic} style={[styles.micButton, micOn ? styles.micActive : null]}>
+      <View style={styles.controlsContainer}>
+        <TouchableOpacity onPress={() => setShowCamera(prev => !prev)} style={[styles.controlButton, showCamera ? styles.cameraActive : null]}>
+          <Text style={styles.buttonText}>{showCamera ? 'Close Camera' : 'Open Camera'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={toggleMic} style={[styles.controlButton, micOn ? styles.micActive : null]}>
           <Text style={styles.buttonText}>{micOn ? 'Stop Mic' : 'Start Mic'}</Text>
         </TouchableOpacity>
       </View>
+
     </View>
   );
 };
@@ -294,8 +299,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#00BFFF', 
     borderRadius: 5 
   },
+  controlsContainer: {
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: 30,
+    justifyContent: 'space-around',
+    width: '80%',
+  },
+  controlButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: '#1E90FF',
+    marginHorizontal: 10,
+  },
+  cameraActive: {
+    backgroundColor: '#FF4500',
+  },
   micActive: {
-    backgroundColor: '#FF4500' // Orange-red when mic is active
+    backgroundColor: '#32CD32',
   },
   angleIndicator: { 
     position: 'absolute', 
