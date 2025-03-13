@@ -433,12 +433,13 @@ async getValues(): Promise<any> {
           reject(err);
       }
 
-      // Set timeout for the entire operation
+      let isResolved = false;
       setTimeout(() => {
-          dataHandler.remove();
-          const timeoutTime = performance.now() - totalStartTime;
-          console.error(`[TIMING] Timeout in getValues after ${timeoutTime.toFixed(2)}ms`);
-          reject(new Error('Timeout waiting for VESC values'));
+          // Only trigger timeout if we haven't already resolved
+          if (!isResolved) {
+              dataHandler.remove();
+              reject(new Error('Timeout waiting for VESC values'));
+          }
       }, 1000);
   });
 }
