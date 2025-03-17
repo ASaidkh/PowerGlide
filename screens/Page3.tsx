@@ -6,16 +6,111 @@ const Page3 = () => {
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const joystickPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
-  const requestLocationPermission = async () => {
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location Permission',
-          message: 'PowerGlideApp needs access to your location for navigation.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
+const Page3 = ({ vescState }) => {
+  // Get the VESC state from the global state manager
+  
+  // Define constants inside the component
+  const JOYSTICK_SIZE = 150;
+  const HANDLE_SIZE = 50;
+  const MAX_DISTANCE = (JOYSTICK_SIZE - HANDLE_SIZE) / 2;
+  const MAX_RPM = 4000; // Maximum RPM for the motors
+  const CAN_ID = 36; // CAN ID for the secondary VESC (left motor)
+  
+  // Joystick state
+  const [joystickX, setJoystickX] = useState(0);
+  const [joystickY, setJoystickY] = useState(0);
+  
+  // Motor RPM state (local copies for display)
+  const [leftMotorRPM, setLeftMotorRPM] = useState(0);
+  const [rightMotorRPM, setRightMotorRPM] = useState(0);
+  
+  // Active state for enabling/disabling motor control
+  const [isActive, setIsActive] = useState(false);
+  
+  // Control interval reference
+  const controlIntervalRef = useRef(null);
+  
+  // Animated values for the joystick position
+  const pan = useRef(new Animated.ValueXY()).current;
+
+ 
+  
+  useEffect(() => {
+    // This will run whenever vescState.states.isConnected changes
+    console.log("Connection status in Page3:", vescState.states.isConnected);
+    // You could also set a local state here if needed
+  }, [vescState.states.isConnected]);
+
+  // Convert joystick position to motor RPM values
+  const calculateMotorRPM = (x, y) => {
+    // Convert normalized joystick values (-1 to 1) to motor RPM
+    
+    // Forward/backward motion (throttle) comes from Y axis
+    const throttle = y;
+    
+    // Steering comes from X axis
+    const steering = x;
+    
+    // Calculate left and right motor RPM using differential steering formula
+    let leftRPM, rightRPM;
+    
+    // Basic differential drive algorithm
+    if (throttle >= 0) {
+      // Moving forward
+      leftRPM = MAX_RPM * (throttle + steering);
+      rightRPM = MAX_RPM * (throttle - steering);
+    } else {
+      // Moving backward
+      leftRPM = MAX_RPM * (throttle - steering);
+      rightRPM = MAX_RPM * (throttle + steering);
+    }
+    
+    // Implement "turn in place" when there's steering but no throttle
+    if (Math.abs(throttle) < 0.1 && Math.abs(steering) > 0.1) {
+      leftRPM = MAX_RPM * steering;
+      rightRPM = -MAX_RPM * steering;
+    }
+    
+    // Clamp values to prevent exceeding MAX_RPM
+    leftRPM = Math.max(-MAX_RPM, Math.min(MAX_RPM, leftRPM));
+    rightRPM = Math.max(-MAX_RPM, Math.min(MAX_RPM, rightRPM));
+    
+    return { leftRPM, rightRPM };
+  };
+  
+  // Start sending commands to the VESC
+  const startControl = () => {
+    if (!vescState.states.isConnected) {
+      Alert.alert('Not Connected', 'Please connect to VESC first');
+      return;
+    }
+    
+    // Clear any existing interval
+    if (controlIntervalRef.current) {
+      clearInterval(controlIntervalRef.current);
+    }
+    
+    // Set the active flag
+    setIsActive(true);
+    
+    // Start the control interval
+    controlIntervalRef.current = setInterval(() => {
+      const { leftRPM, rightRPM } = calculateMotorRPM(joystickX, joystickY);
+      
+      // Update local state for display
+      setLeftMotorRPM(Math.round(leftRPM));
+      setRightMotorRPM(Math.round(rightRPM));
+      
+      // Update the global state
+      vescState.setters.setLeftMotorRPM(Math.round(leftRPM));
+      vescState.setters.setRightMotorRPM(Math.round(rightRPM));
+      
+      // Send the commands
+      try {
+        // Access the control manager from Page1 via the global state
+        if (vescState.states.controlInterval) {
+          clearInterval(vescState.states.controlInterval);
+          vescState.setters.setControlInterval(null);
         }
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
