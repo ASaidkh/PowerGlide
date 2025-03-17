@@ -1,14 +1,14 @@
 import React, { useEffect } from 'react';
 import { SafeAreaView, View, Alert } from 'react-native';
 import { Device } from 'react-native-ble-plx';
-import { styles } from './VESC/styles/vescStyles';
-import { VescConnectionManager } from './VESC/functions/VescConnectionManager';
-import { VescControlManager } from './VESC/functions/VescControlManager';
-import { VescControls } from './VESC/components/VescControls';
-import { ValuesDisplay } from './VESC/components/ValuesDisplay';
-import { LoggingControls } from './VESC/components/LoggingControls';
-import { ScanningView } from './VESC/components/ScanningView';
-import { Command } from '../App';
+import { styles } from '../VESC/styles/vescStyles';
+import { VescConnectionManager } from '../VESC/functions/VescConnectionManager';
+import { VescControlManager } from '../VESC/functions/VescControlManager';
+import { VescControls } from '../VESC/components/VescControls';
+import { ValuesDisplay } from '../VESC/components/ValuesDisplay';
+import { LoggingControls } from '../VESC/components/LoggingControls';
+import { ScanningView } from '../VESC/components/ScanningView';
+import { Command } from '../../App';
 
 interface Page1Props {
   vescState: any;

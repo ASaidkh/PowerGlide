@@ -1,6 +1,6 @@
 import { VescCommands } from './VescCommands';
 import { COMMANDS } from '../constants/vescCommands';
-import { Command } from '../../App';
+import { Command } from '../../../App';
 
 export class VescControlManager {
   commands: any;

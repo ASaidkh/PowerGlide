@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { VescValues, LogData } from './types/VescTypes';
+import { VescValues, LogData } from '../types/VescTypes';
 
 export const useVescState = () => {
   // Device states

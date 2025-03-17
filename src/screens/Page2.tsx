@@ -6,7 +6,7 @@ import { Worklets } from 'react-native-worklets-core';
 import Reanimated from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import useVoskRecognition from '../hooks/UseVoskRecognition'; // Import the custom hook
-import { Command } from '../App'; // Import the Command type
+import { Command } from '../../App'; // Import the Command type
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);
 
