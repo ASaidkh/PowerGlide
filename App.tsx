@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
-import Page1 from './screens/Page1';
-import Page2 from './screens/Page2';
-import Page3 from './screens/Page3';
-import { useVescState } from './screens/VESC/functions/VescStateManager';
+import Page1 from './src/screens/Page1';
+import Page2 from './src/screens/Page2';
+import Page3 from './src/screens/Page3';
+import { useVescState } from './src/VESC/functions/VescStateManager';
 
 // Define a simple command type
 export interface Command {
