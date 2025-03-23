@@ -1,19 +1,36 @@
 import { VescCommands } from './VescCommands';
 import { COMMANDS } from '../constants/vescCommands';
+import { Command } from '../../App';
 
 export class VescControlManager {
-  commands : any;
-  state : any;
-  canID : number;
+  commands: any;
+  state: any;
+  canID: number;
+  commandBuffer: Command[];
+  removeCommand: (index: number) => void;
+  commandProcessingInterval: any;
 
-  constructor(vescCommands, stateManager) {
+  constructor(vescCommands, stateManager, commandBuffer = [], removeCommand = () => {}) {
     this.commands = vescCommands;
     this.state = stateManager;
     this.canID = 36;
+    this.commandBuffer = commandBuffer;
+    this.removeCommand = removeCommand;
+    this.commandProcessingInterval = null;
+  }
+
+  updateState = (newState) => {
+    this.state = newState;
+  }
+
+  updateCommandBuffer = (newBuffer, newRemoveCommand) => {
+    this.commandBuffer = newBuffer;
+    if (newRemoveCommand) {
+      this.removeCommand = newRemoveCommand;
+    }
   }
 
   startControl = () => {
-
     const { setControlInterval, setIsRunning } = this.state.setters;
 
     // Clear any existing interval
@@ -23,26 +40,19 @@ export class VescControlManager {
 
     // Set new interval
     const newInterval = setInterval(() => {
-      // Always use the latest state value for dutyCycle
-     // const latestDutyCycle = this.state.states.dutyCycle;
-      //console.log("Duty Cycle:", this.state.states.dutyCycle);
-     // this.commands.setDuty(latestDutyCycle);  // Send the updated duty cycle
-
-      //const latestCurrent = this.state.states.targetCurrent;
-     // console.log("Current:", this.state.states.targetCurrent);
-      //this.commands.setCurrent(latestCurrent);  // Send the current
-
-      
       console.log("Setting Right Motor RPM:", this.state.states.RightMotorRPM);
       console.log("Setting Left Motor RPM:", this.state.states.LeftMotorRPM);
 
-      this.commands.setRpmLeft(this.canID, this.state.states.LeftMotorRPM);  // Set left RPM
-      this.commands.setRpmRight(this.state.states.RightMotorRPM);  // Set left RPM
+      this.commands.setRpmRight(this.canID, this.state.states.LeftMotorRPM);  // Set left RPM
+      this.commands.setRpmLeft(this.state.states.RightMotorRPM);  // Set right RPM
     }, 200);
 
     // Store the new interval and update the running state
     setControlInterval(newInterval);
     setIsRunning(true);
+
+    // Start processing commands from the buffer
+    this.startCommandProcessing();
   };
 
   stopControl = () => {
@@ -53,15 +63,19 @@ export class VescControlManager {
       clearInterval(this.state.states.controlInterval);
     }
 
-    // Stop the control (set duty rpm to 0)
-    this.commands.setRpmLeft(this.canID, 0);  // Set left RPM
-    this.commands.setRpmRight(0);  // Set left RPM
+    // Stop the command processing
+    this.stopCommandProcessing();
+
+    // Stop the control (set rpm to 0)
+    this.commands.setRpmRight(this.canID, 0);  // Set left RPM
+    this.commands.setRpmLeft(0);  // Set right RPM
 
     // Reset state
     setControlInterval(null);
     setIsRunning(false);
   };
 
+  // Start continuous logging of VESC values
   startContinuousLogging = () => {
     const { setLoggingInterval, setVescValues } = this.state.setters;
   
@@ -106,12 +120,13 @@ export class VescControlManager {
       } catch (error) {
         console.error("Error getting VESC values:", error);
       }
-    }, 500); // Poll every 500ms for more responsive feedback
+    }, 20000); // Poll every 200ms for more responsive feedback
   
     // Store the new interval
     setLoggingInterval(newLoggingInterval);
   };
   
+  // Stop logging
   stopLogging = () => {
     const { setLoggingInterval } = this.state.setters;
   
@@ -123,9 +138,194 @@ export class VescControlManager {
     // Reset logging state
     setLoggingInterval(null);
   };
-  
-  // Method to update state dynamically
-    updateState = (newState) => {
-        this.state = newState; // Update the state in the control manager
+
+  // Start processing commands from the buffer
+  startCommandProcessing = () => {
+    // Clear any existing command processing interval
+    if (this.commandProcessingInterval) {
+      clearInterval(this.commandProcessingInterval);
+    }
+
+    // Create new interval to check command buffer
+    this.commandProcessingInterval = setInterval(() => {
+      this.processCommandBuffer();
+    }, 200); // Check buffer every 200ms
+  };
+
+  // Stop processing commands
+  stopCommandProcessing = () => {
+    if (this.commandProcessingInterval) {
+      clearInterval(this.commandProcessingInterval);
+      this.commandProcessingInterval = null;
+    }
+  };
+
+  // Process commands from the buffer
+  processCommandBuffer = () => {
+    // Skip if no commands or not running
+    if (!this.commandBuffer || this.commandBuffer.length === 0 || !this.state.states.isRunning) {
+      return;
+    }
+
+    // Get the oldest command
+    const command = this.commandBuffer[0];
+    console.log('Processing command:', command);
+
+    // Process based on command type
+    if (command.type === 'direction') {
+      this.handleDirectionCommand(command);
+    } else if (command.type === 'voice') {
+      this.handleVoiceCommand(command);
+    }
+
+    // Remove the processed command
+    this.removeCommand(0);
+  };
+
+  // Handle direction commands (left/right with angle)
+  handleDirectionCommand = (command: Command) => {
+    const { value, angle = 0 } = command;
+    
+    // Get current RPM values
+    let leftRPM = this.state.states.LeftMotorRPM;
+    let rightRPM = this.state.states.RightMotorRPM;
+    
+    // Calculate turn factor based on angle (0-45 degrees)
+    // Normalize to a value between 0 and 1
+    const turnFactor = Math.min(Math.abs(angle) / 45, 1);
+    
+    // Calculate differential based on direction and angle
+    if (value === 'left') {
+      // For left turns, reduce right motor speed
+      rightRPM = this.state.states.RightMotorRPM * (1 - turnFactor * 0.7);
+    } else if (value === 'right') {
+      // For right turns, reduce left motor speed
+      leftRPM = this.state.states.LeftMotorRPM * (1 - turnFactor * 0.7);
+    }
+    
+    // Update motor RPMs
+    this.state.setters.setLeftMotorRPM(Math.round(leftRPM));
+    this.state.setters.setRightMotorRPM(Math.round(rightRPM));
+    
+    console.log(`Direction command processed: ${value} at ${angle}°, Left RPM: ${leftRPM}, Right RPM: ${rightRPM}`);
+  };
+
+  // Handle voice commands
+  handleVoiceCommand = (command: Command) => {
+    const { value } = command;
+    
+    switch (value) {
+      case 'go':
+        // Set both motors to a moderate forward speed
+        this.state.setters.setLeftMotorRPM(1000);
+        this.state.setters.setRightMotorRPM(1000);
+        break;
+        
+      case 'reverse':
+        // Set both motors to a moderate reverse speed
+        this.state.setters.setLeftMotorRPM(-1000);
+        this.state.setters.setRightMotorRPM(-1000);
+        break;
+        
+      case 'stop':
+        // Stop both motors
+        this.state.setters.setLeftMotorRPM(0);
+        this.state.setters.setRightMotorRPM(0);
+        break;
+        
+      case 'speed one':
+        // Low speed
+        this.setSpeedLevel(1);
+        break;
+        
+      case 'speed two':
+        // Medium speed
+        this.setSpeedLevel(2);
+        break;
+        
+      case 'speed three':
+        // High speed
+        this.setSpeedLevel(3);
+        break;
+        
+      case 'left':
+        // Hard left turn
+        this.turnDirection('left');
+        break;
+        
+      case 'right':
+        // Hard right turn
+        this.turnDirection('right');
+        break;
+        
+      case 'help me':
+        // Emergency stop and alert
+        this.emergencyStop();
+        break;
+    }
+    
+    console.log(`Voice command processed: ${value}`);
+  };
+
+  // Set speed level (1, 2, or 3)
+  setSpeedLevel = (level: number) => {
+    // Get the direction (forward or reverse)
+    const currentLeftRPM = this.state.states.LeftMotorRPM;
+    const currentRightRPM = this.state.states.RightMotorRPM;
+    const isForward = Math.max(currentLeftRPM, currentRightRPM) >= 0;
+    
+    // Define speed levels
+    const speedLevels = {
+      1: 2000,  // Low speed
+      2: 4000,  // Medium speed
+      3: 6000   // High speed
     };
+    
+    // Get the speed value for the given level
+    const speedValue = speedLevels[level] || speedLevels[1];
+    
+    // Apply direction
+    const actualSpeed = isForward ? speedValue : -speedValue;
+    
+    // Update motor RPMs
+    this.state.setters.setLeftMotorRPM(actualSpeed);
+    this.state.setters.setRightMotorRPM(actualSpeed);
+    
+    console.log(`Speed set to level ${level}: ${actualSpeed} RPM`);
+  };
+
+  // Turn in a specific direction
+  turnDirection = (direction: 'left' | 'right') => {
+    // Get current RPM values
+    const baseRPM = Math.max(
+      Math.abs(this.state.states.LeftMotorRPM), 
+      Math.abs(this.state.states.RightMotorRPM)
+    );
+    
+    // If not moving, set a default RPM
+    const speedToUse = baseRPM > 0 ? baseRPM : 2000;
+    
+    if (direction === 'left') {
+      this.state.setters.setLeftMotorRPM(speedToUse / 2);
+      this.state.setters.setRightMotorRPM(speedToUse);
+    } else {
+      this.state.setters.setLeftMotorRPM(speedToUse);
+      this.state.setters.setRightMotorRPM(speedToUse / 2);
+    }
+    
+    console.log(`Turned ${direction}, Left RPM: ${this.state.states.LeftMotorRPM}, Right RPM: ${this.state.states.RightMotorRPM}`);
+  };
+
+  // Emergency stop
+  emergencyStop = () => {
+    // Immediately stop both motors
+    this.state.setters.setLeftMotorRPM(0);
+    this.state.setters.setRightMotorRPM(0);
+    
+    // Send emergency stop commands directly
+    this.commands.setRpmRight(this.canID, 0);
+    this.commands.setRpmLeft(0);
+    
+    console.log('EMERGENCY STOP ACTIVATED');
+  };
 }

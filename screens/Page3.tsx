@@ -18,7 +18,7 @@ const Page3 = ({ vescState }) => {
   const JOYSTICK_SIZE = 150;
   const HANDLE_SIZE = 50;
   const MAX_DISTANCE = (JOYSTICK_SIZE - HANDLE_SIZE) / 2;
-  const MAX_RPM = 10000; // Maximum RPM for the motors
+  const MAX_RPM = 4000; // Maximum RPM for the motors
   const CAN_ID = 36; // CAN ID for the secondary VESC (left motor)
   
   // Joystick state
