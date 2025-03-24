@@ -182,7 +182,7 @@ const Page2 = ({ addCommand, commandBuffer }) => {
           value: directionText.toLowerCase(),
           angle: angle
         });
-        console.log(`Direction command added: ${directionText} (${angle}°)`);
+        //console.log(`Direction command added: ${directionText} (${angle}°)`);
       }
     }
   });

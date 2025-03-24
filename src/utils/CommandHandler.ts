@@ -1,31 +1,36 @@
-export const processCommand = (headDirection: string, headAngle: number, voiceCommand: string) => {
-  console.log(`Processing Command: ${voiceCommand}, Head Direction: ${headDirection}, Head Angle: ${headAngle}`);
+// new command handler
 
-  // Stop takes priority over everything
-  if (voiceCommand === 'stop') {
-    console.log('Stop Command Sent');
-    return;
+export const processCommand = (
+  headDirection: string, 
+  headAngle: number, 
+  voiceCommand: string, 
+  addCommand: (command: { type: string; value: string; angle?: number }) => void
+) => {
+  console.log(`Processing Command: Voice=${voiceCommand}, Head=${headDirection}, Angle=${headAngle}`);
+
+  let direction = 0; // Default to neutral
+  let turn = 'N'; // Default to neutral
+  let angle = 0; // Default to no turn angle
+
+  // Determine movement direction
+  if (voiceCommand === 'go') {
+    direction = 1; // Forward
+  } else if (voiceCommand === 'reverse') {
+    direction = -1; // Backward
   }
 
-  let commandOutput = '';
-
-  // Handling movement commands
-  if (voiceCommand === 'go' || voiceCommand === 'reverse') {
-    commandOutput += voiceCommand === 'go' ? 'Moving Forward' : 'Moving Backward';
-
-    // Combine with head movement if applicable
-    if (headDirection === 'Left' || headDirection === 'Right') {
-      commandOutput += `, Turning ${headDirection.toLowerCase()} at ${headAngle} degrees`;
-    }
-  } 
-  // Head-only movement (when no overriding voice command exists)
-  else if (!voiceCommand && (headDirection === 'Left' || headDirection === 'Right')) {
-    commandOutput = `Adjusting direction: Turning ${headDirection.toLowerCase()} at ${headAngle} degrees`;
-  } 
-  // Default case (e.g., no significant input)
-  else {
-    commandOutput = 'Neutral position detected, no movement command issued';
+  // Determine turning direction and angle
+  if (headDirection === 'Left') {
+    turn = 'L';
+    angle = -headAngle; // Negative for left turn
+  } else if (headDirection === 'Right') {
+    turn = 'R';
+    angle = headAngle; // Positive for right turn
   }
 
-  console.log(commandOutput);
+  // Log formatted command
+  console.log(`[${direction}, ${turn}, ${angle}]`);
+
+  // Store the command in commandBuffer
+  addCommand({ type: 'movement', value: `[${direction}, ${turn}, ${angle}]`, angle });
 };
