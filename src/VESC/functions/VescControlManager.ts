@@ -6,16 +6,12 @@ export class VescControlManager {
   commands: any;
   state: any;
   canID: number;
-  commandBuffer: Command[];
-  removeCommand: (index: number) => void;
   commandProcessingInterval: any;
 
-  constructor(vescCommands, stateManager, commandBuffer = [], removeCommand = () => {}) {
+  constructor(vescCommands, stateManager) {
     this.commands = vescCommands;
     this.state = stateManager;
     this.canID = 36;
-    this.commandBuffer = commandBuffer;
-    this.removeCommand = removeCommand;
     this.commandProcessingInterval = null;
   }
 
@@ -30,6 +26,66 @@ export class VescControlManager {
     }
   }
 
+  // New function to calculate motor RPM from joystick x,y values
+  calculateMotorValues = (x: number, y: number) => {
+    // Improved smooth control algorithm with consistent speed response
+    
+    // Max RPM 
+    const MAX_RPM = 10000;
+    
+    // Apply a small deadzone to prevent drift
+    const deadzone = 0.1;
+    if (Math.sqrt(x*x + y*y) < deadzone) {
+      return { leftRPM: 0, rightRPM: 0 };
+    }
+    
+    // Clean the inputs to handle any numerical imprecision
+    // For example, ensure that (0, 0.99) and (0, 1.0) produce similar results
+    // Round to 2 decimal places for stability
+    const xInput = Math.round(Math.max(-1, Math.min(1, x)) * 100) / 100;
+    const yInput = Math.round(Math.max(-1, Math.min(1, y)) * 100) / 100;
+    
+    // Forward/reverse is controlled by Y axis (inverted)
+    // Up is negative Y in joystick coordinates
+    const throttle = -yInput;
+    
+    // Turning is controlled by X axis
+    // Use a reduced turn sensitivity for more stability
+    const turn = xInput * 0.7; // Only use 70% of turn input for smoother control
+    
+    // Basic arcade drive formula
+    let leftMotor = throttle + turn;
+    let rightMotor = throttle - turn;
+    
+    // Normalize if needed to prevent exceeding limits
+    const maxMagnitude = Math.max(Math.abs(leftMotor), Math.abs(rightMotor));
+    if (maxMagnitude > 1.0) {
+      leftMotor = leftMotor / maxMagnitude;
+      rightMotor = rightMotor / maxMagnitude;
+    }
+    
+    // Special case handling for pure forward/backward motion
+    // This ensures that small X deviations don't significantly change speed
+    if (Math.abs(xInput) < 0.15) {
+      // When moving almost straight, prioritize consistent speed over turning
+      leftMotor = throttle;
+      rightMotor = throttle;
+    }
+    
+    // Apply reverse speed limit
+    if (leftMotor < 0) leftMotor *= 0.5;  // 50% speed in reverse
+    if (rightMotor < 0) rightMotor *= 0.5;  // 50% speed in reverse
+    
+    // Convert to RPM
+    const leftRPM = Math.round(leftMotor * MAX_RPM);
+    const rightRPM = Math.round(rightMotor * MAX_RPM);
+    
+    // Log for debugging
+    console.log(`Joystick: (${xInput.toFixed(2)}, ${yInput.toFixed(2)}) → Motors: L:${leftRPM}, R:${rightRPM}`);
+    
+    return { leftRPM, rightRPM };
+  }
+
   startControl = () => {
     const { setControlInterval, setIsRunning } = this.state.setters;
 
@@ -40,11 +96,22 @@ export class VescControlManager {
 
     // Set new interval
     const newInterval = setInterval(() => {
-      console.log("Setting Right Motor RPM:", this.state.states.RightMotorRPM);
-      console.log("Setting Left Motor RPM:", this.state.states.LeftMotorRPM);
+      // Get joystick values from global state
+      const { joystickX, joystickY } = this.state.states;
+      
+      // Calculate motor values using the new function
+      const { leftRPM, rightRPM } = this.calculateMotorValues(joystickX, joystickY);
+      
+      // Update the state with calculated RPM values
+      this.state.setters.setLeftMotorRPM(leftRPM);
+      this.state.setters.setRightMotorRPM(rightRPM);
+      
+      console.log("Setting Left Motor RPM:", leftRPM);
+      console.log("Setting Right Motor RPM:", rightRPM);
 
-      this.commands.setRpmRight(this.canID, this.state.states.LeftMotorRPM);  // Set left RPM
-      this.commands.setRpmLeft(this.state.states.RightMotorRPM);  // Set right RPM
+      // Send commands to VESC
+      this.commands.setRpmRight(this.canID, leftRPM);  // Set left RPM
+      this.commands.setRpmLeft(rightRPM);  // Set right RPM
     }, 200);
 
     // Store the new interval and update the running state
@@ -120,7 +187,7 @@ export class VescControlManager {
       } catch (error) {
         console.error("Error getting VESC values:", error);
       }
-    }, 20000); // Poll every 200ms for more responsive feedback
+    }, 2000); // Poll every 20 seconds for VESC values
   
     // Store the new interval
     setLoggingInterval(newLoggingInterval);
@@ -186,28 +253,21 @@ export class VescControlManager {
   handleDirectionCommand = (command: Command) => {
     const { value, angle = 0 } = command;
     
-    // Get current RPM values
-    let leftRPM = this.state.states.LeftMotorRPM;
-    let rightRPM = this.state.states.RightMotorRPM;
+    // Map direction command to joystick-like input
+    let x = 0;
     
-    // Calculate turn factor based on angle (0-45 degrees)
-    // Normalize to a value between 0 and 1
-    const turnFactor = Math.min(Math.abs(angle) / 45, 1);
-    
-    // Calculate differential based on direction and angle
     if (value === 'left') {
-      // For left turns, reduce right motor speed
-      rightRPM = this.state.states.RightMotorRPM * (1 - turnFactor * 0.7);
+      // For left turns, set negative x value proportional to angle
+      x = -Math.min(Math.abs(angle) / 45, 1);
     } else if (value === 'right') {
-      // For right turns, reduce left motor speed
-      leftRPM = this.state.states.LeftMotorRPM * (1 - turnFactor * 0.7);
+      // For right turns, set positive x value proportional to angle
+      x = Math.min(Math.abs(angle) / 45, 1);
     }
     
-    // Update motor RPMs
-    this.state.setters.setLeftMotorRPM(Math.round(leftRPM));
-    this.state.setters.setRightMotorRPM(Math.round(rightRPM));
+    // Update global joystick state (y keeps its current value for forward/reverse motion)
+    this.state.setters.setJoystickX(x);
     
-    console.log(`Direction command processed: ${value} at ${angle}°, Left RPM: ${leftRPM}, Right RPM: ${rightRPM}`);
+    console.log(`Direction command processed: ${value} at ${angle}°, mapped to joystick X: ${x}`);
   };
 
   // Handle voice commands
@@ -216,46 +276,46 @@ export class VescControlManager {
     
     switch (value) {
       case 'go':
-        // Set both motors to a moderate forward speed
-        this.state.setters.setLeftMotorRPM(1000);
-        this.state.setters.setRightMotorRPM(1000);
+        // Set to move forward
+        this.state.setters.setJoystickY(-1); // Up is negative y
+        this.state.setters.setJoystickX(0);  // Straight
         break;
         
       case 'reverse':
-        // Set both motors to a moderate reverse speed
-        this.state.setters.setLeftMotorRPM(-1000);
-        this.state.setters.setRightMotorRPM(-1000);
+        // Set to move backward
+        this.state.setters.setJoystickY(1);  // Down is positive y
+        this.state.setters.setJoystickX(0);  // Straight
         break;
         
       case 'stop':
         // Stop both motors
-        this.state.setters.setLeftMotorRPM(0);
-        this.state.setters.setRightMotorRPM(0);
+        this.state.setters.setJoystickY(0);
+        this.state.setters.setJoystickX(0);
         break;
         
       case 'speed one':
-        // Low speed
-        this.setSpeedLevel(1);
+        // Low speed (set to 1/3 of max)
+        this.state.setters.setJoystickY(this.state.states.joystickY * 0.33);
         break;
         
       case 'speed two':
-        // Medium speed
-        this.setSpeedLevel(2);
+        // Medium speed (set to 2/3 of max)
+        this.state.setters.setJoystickY(this.state.states.joystickY * 0.66);
         break;
         
       case 'speed three':
-        // High speed
-        this.setSpeedLevel(3);
+        // High speed (full speed)
+        this.state.setters.setJoystickY(this.state.states.joystickY * 1.0);
         break;
         
       case 'left':
         // Hard left turn
-        this.turnDirection('left');
+        this.state.setters.setJoystickX(-0.75);
         break;
         
       case 'right':
         // Hard right turn
-        this.turnDirection('right');
+        this.state.setters.setJoystickX(0.75);
         break;
         
       case 'help me':
@@ -267,58 +327,13 @@ export class VescControlManager {
     console.log(`Voice command processed: ${value}`);
   };
 
-  // Set speed level (1, 2, or 3)
-  setSpeedLevel = (level: number) => {
-    // Get the direction (forward or reverse)
-    const currentLeftRPM = this.state.states.LeftMotorRPM;
-    const currentRightRPM = this.state.states.RightMotorRPM;
-    const isForward = Math.max(currentLeftRPM, currentRightRPM) >= 0;
-    
-    // Define speed levels
-    const speedLevels = {
-      1: 2000,  // Low speed
-      2: 4000,  // Medium speed
-      3: 6000   // High speed
-    };
-    
-    // Get the speed value for the given level
-    const speedValue = speedLevels[level] || speedLevels[1];
-    
-    // Apply direction
-    const actualSpeed = isForward ? speedValue : -speedValue;
-    
-    // Update motor RPMs
-    this.state.setters.setLeftMotorRPM(actualSpeed);
-    this.state.setters.setRightMotorRPM(actualSpeed);
-    
-    console.log(`Speed set to level ${level}: ${actualSpeed} RPM`);
-  };
-
-  // Turn in a specific direction
-  turnDirection = (direction: 'left' | 'right') => {
-    // Get current RPM values
-    const baseRPM = Math.max(
-      Math.abs(this.state.states.LeftMotorRPM), 
-      Math.abs(this.state.states.RightMotorRPM)
-    );
-    
-    // If not moving, set a default RPM
-    const speedToUse = baseRPM > 0 ? baseRPM : 2000;
-    
-    if (direction === 'left') {
-      this.state.setters.setLeftMotorRPM(speedToUse / 2);
-      this.state.setters.setRightMotorRPM(speedToUse);
-    } else {
-      this.state.setters.setLeftMotorRPM(speedToUse);
-      this.state.setters.setRightMotorRPM(speedToUse / 2);
-    }
-    
-    console.log(`Turned ${direction}, Left RPM: ${this.state.states.LeftMotorRPM}, Right RPM: ${this.state.states.RightMotorRPM}`);
-  };
-
   // Emergency stop
   emergencyStop = () => {
-    // Immediately stop both motors
+    // Reset joystick state
+    this.state.setters.setJoystickX(0);
+    this.state.setters.setJoystickY(0);
+    
+    // Set motors to 0 RPM
     this.state.setters.setLeftMotorRPM(0);
     this.state.setters.setRightMotorRPM(0);
     

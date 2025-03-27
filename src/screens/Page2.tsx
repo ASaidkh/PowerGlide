@@ -10,7 +10,7 @@ import { Command } from '../../App'; // Import the Command type
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);
 
-const Page2 = ({ addCommand, commandBuffer }) => {
+const Page2 = ({ vescState}) => {
   const device = useCameraDevice('front');
   const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
   const { hasPermission: hasMicPermission, requestPermission: requestMicPermission } = useMicrophonePermission();
@@ -100,15 +100,12 @@ const Page2 = ({ addCommand, commandBuffer }) => {
     // Check if any valid command is in the voice result
     for (const validCommand of validCommands) {
       if (command.includes(validCommand)) {
-        addCommand({
-          type: 'voice',
-          value: validCommand
-        });
-        console.log(`Voice command added: ${validCommand}`);
+        //Set x and y
+       // console.log(`Voice command added: ${validCommand}`);
         break; // Only add one command per voice input
       }
     }
-  }, [addCommand]);
+  }, []);
 
   const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: Face[]) => {
     setFaces(detectedFaces);
@@ -177,11 +174,7 @@ const Page2 = ({ addCommand, commandBuffer }) => {
 
       // Add direction command to the buffer if not neutral
       if (!isNeutral) {
-        addCommand({
-          type: 'direction',
-          value: directionText.toLowerCase(),
-          angle: angle
-        });
+       //Set x and y
         console.log(`Direction command added: ${directionText} (${angle}°)`);
       }
     }
@@ -232,15 +225,7 @@ const Page2 = ({ addCommand, commandBuffer }) => {
             <Text style={styles.headDirectionText}>Face: {headDirection}</Text>
           </View>
           
-          {/* Command display for debugging */}
-          <View style={styles.commandDisplay}>
-            <Text style={styles.commandTitle}>Last 3 Commands:</Text>
-            {commandBuffer.slice(-3).map((cmd, index) => (
-              <Text key={index} style={styles.commandText}>
-                {cmd.type}: {cmd.value} {cmd.angle ? `(${cmd.angle.toFixed(1)}°)` : ''}
-              </Text>
-            ))}
-          </View>
+          
         </>
       ) : (
         <>
