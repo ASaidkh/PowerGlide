@@ -12,11 +12,9 @@ import { Command } from '../../App';
 
 interface Page1Props {
   vescState: any;
-  commandBuffer: Command[];
-  removeCommand: (index: number) => void;
 }
 
-const Page1: React.FC<Page1Props> = ({ vescState, commandBuffer, removeCommand }) => {
+const Page1: React.FC<Page1Props> = ({ vescState}) => {
   const connectionManager = React.useRef(new VescConnectionManager()).current;
   const [controlManager, setControlManager] = React.useState<VescControlManager | null>(null);
 
@@ -27,12 +25,7 @@ const Page1: React.FC<Page1Props> = ({ vescState, commandBuffer, removeCommand }
     }
   }, [vescState, controlManager]);
 
-  // Pass the command buffer to the control manager whenever it changes
-  useEffect(() => {
-    if (controlManager) {
-      controlManager.updateCommandBuffer(commandBuffer, removeCommand);
-    }
-  }, [commandBuffer, removeCommand, controlManager]);
+  
 
   useEffect(() => {
     return () => {
@@ -65,9 +58,7 @@ const Page1: React.FC<Page1Props> = ({ vescState, commandBuffer, removeCommand }
       const vescCommands = await connectionManager.connect(device);
       const newControlManager = new VescControlManager(
         vescCommands, 
-        vescState, 
-        commandBuffer, 
-        removeCommand
+        vescState
       );
       setControlManager(newControlManager);
       
