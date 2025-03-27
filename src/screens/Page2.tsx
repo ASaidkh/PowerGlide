@@ -69,6 +69,7 @@ const Page2 = ({ vescState}) => {
   useEffect(() => {
     if (result) {
       processVoiceCommand(result);
+      console.log(`Voice command recognized: ${result}`);
     }
   }, [result]);
 
@@ -87,25 +88,36 @@ const Page2 = ({ vescState}) => {
     }
   };
 
-  // Process voice commands
   const processVoiceCommand = useCallback((text: string) => {
-    const command = text.toLowerCase();
+    const command = text.toLowerCase().trim(); // Normalize input
     
-    // List of valid voice commands
-    const validCommands = [
-      'go', 'reverse', 'speed one', 'speed two', 'speed three',
-      'stop', 'left', 'right', 'help me'
-    ];
-    
-    // Check if any valid command is in the voice result
-    for (const validCommand of validCommands) {
-      if (command.includes(validCommand)) {
-        //Set x and y
-       // console.log(`Voice command added: ${validCommand}`);
-        break; // Only add one command per voice input
+    // Map commands to corresponding VESC control values
+    const commandMappings: Record<string, { x: number; y: number }> = {
+      'go': { x: 0, y: 1 },          // Move forward
+      'reverse': { x: 0, y: -1 },    // Move backward
+      'speed one': { x: 0, y: 0.4 }, // Low speed
+      'speed two': { x: 0, y: 0.7 },   // Medium speed
+      'speed three': { x: 0, y: 1 }, // High speed
+      'stop': { x: 0, y: 0 },        // Stop movement
+      'left': { x: -1, y: 0 },       // Turn left
+      'right': { x: 1, y: 0 },       // Turn right
+      'help me': { x: 0, y: 0 },     // Emergency (no movement)
+    };
+  
+    // Find a matching command
+    for (const [key, value] of Object.entries(commandMappings)) {
+      if (command.includes(key)) {
+        console.log(`Voice command recognized: ${key} -> x: ${value.x}, y: ${value.y}`);
+        
+        // Send `x` and `y` values to VESC state update
+        vescState.setters.setJoystickX(value.x);
+        vescState.setters.setJoystickY(value.y);
+        // vescState.updateCommand({ x: value.x, y: value.y } as Command);
+        break; // Process only one command per recognition
       }
     }
-  }, []);
+  }, [vescState]);
+  
 
   const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: Face[]) => {
     setFaces(detectedFaces);
@@ -175,7 +187,7 @@ const Page2 = ({ vescState}) => {
       // Add direction command to the buffer if not neutral
       if (!isNeutral) {
        //Set x and y
-        console.log(`Direction command added: ${directionText} (${angle}°)`);
+        //console.log(`Direction command added: ${directionText} (${angle}°)`);
       }
     }
   });
