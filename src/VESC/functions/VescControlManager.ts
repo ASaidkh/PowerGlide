@@ -73,8 +73,8 @@ export class VescControlManager {
     }
     
     // Apply reverse speed limit
-    if (leftMotor < 0) leftMotor *= 0.5;  // 50% speed in reverse
-    if (rightMotor < 0) rightMotor *= 0.5;  // 50% speed in reverse
+    if (leftMotor < 0 && Math.abs(x) < 0.1) leftMotor *= 0.5;  // 50% speed in reverse
+    if (rightMotor < 0 && Math.abs(x) < 0.1) rightMotor *= 0.5;  // 50% speed in reverse
     
     // Convert to RPM
     const leftRPM = Math.round(leftMotor * MAX_RPM);

@@ -55,7 +55,6 @@ export default function App() {
     console.log("Effect triggered, result:", result);
     if (result) {
       setCommand((prev) => ({ ...prev, voice: result }));
-      processCommand(command.headDirection, command.headAngle, result);
       addCommand({ type: 'voice', value: result });
     }
   }, [result, addCommand]);
@@ -70,9 +69,9 @@ export default function App() {
     console.log(`Rendering ${route.key}, addCommand:`, addCommand); // Debug Log
     switch (route.key) {
       case 'first':
-        return <Page1 vescState={sharedVescState} commandBuffer={commandBuffer} removeCommand={removeCommand} />;
+        return <Page1 vescState={sharedVescState}/>;
       case 'second':
-        return <Page2 addCommand={addCommand} commandBuffer={commandBuffer} />;
+        return <Page2 vescState={sharedVescState} />;
       case 'third':
         return <Page3 vescState={sharedVescState} />;
       default:
