@@ -141,7 +141,7 @@ const Page2 = ({ vescState}) => {
     const calculatedAngle = -offsetPercentage * 45;
     
     // Limit to 2 decimal places
-    const roundedAngle = parseFloat(calculatedAngle.toFixed(2)); // Rounds to 2 decimal places
+    const roundedAngle = parseFloat(calculatedAngle.toFixed(2));
     
     // Use face.yawAngle if available (more accurate)
     const angle = face.yawAngle !== undefined ? parseFloat(face.yawAngle.toFixed(2)) : roundedAngle;
@@ -152,45 +152,43 @@ const Page2 = ({ vescState}) => {
     // Check if the face is in neutral position
     const isNeutral = Math.abs(angle) < 5;
 
-    // Determine simplified direction text for UI
+    // Determine direction based on angle
     let directionText = 'Neutral';
+    let command = { x: 0, y: 0 };
     
-    if (isNeutral) {
-      directionText = 'Neutral';
-    } else if (angle > 0) {  // positive angle means left
-      directionText = 'Left';
-    } else {                 // negative angle means right
-      directionText = 'Right';
+    if (angle > 0) {  // positive angle means left
+        directionText = 'Left';
+        command = { x: -1, y: 0 };
+    } else if (angle < 0) { // negative angle means right
+        directionText = 'Right';
+        command = { x: 1, y: 0 };
     }
 
     const currentTime = Date.now();
     const timeDifference = currentTime - lastLoggedTime;
     const angleDifference = Math.abs(angle - previousAngle);
 
-    // Determine if we should log based on:
-    // 1. Significant angle change, or
-    // 2. Time interval passed, or
-    // 3. Transition to neutral from non-neutral, or
-    // 4. Transition from neutral to non-neutral
+    // Determine if we should log based on significant change or time interval
     const transitionToNeutral = !wasNeutral && isNeutral;
     const transitionFromNeutral = wasNeutral && !isNeutral;
     
     if (angleDifference >= 5 || timeDifference >= 15000 || transitionToNeutral || transitionFromNeutral) {
-      // Update state
-      if (directionText !== headDirection || timeDifference >= 15000 || transitionToNeutral || transitionFromNeutral) {
-        setHeadDirection(directionText);
-        setPreviousAngle(angle);
-        setLastLoggedTime(currentTime);
-        setWasNeutral(isNeutral);
-      }
+        if (directionText !== headDirection || timeDifference >= 15000 || transitionToNeutral || transitionFromNeutral) {
+            setHeadDirection(directionText);
+            setPreviousAngle(angle);
+            setLastLoggedTime(currentTime);
+            setWasNeutral(isNeutral);
+        }
 
-      // Add direction command to the buffer if not neutral
-      if (!isNeutral) {
-       //Set x and y
-        //console.log(`Direction command added: ${directionText} (${angle}°)`);
-      }
+        // Send command to VESC state if not neutral
+        if (!isNeutral) {
+            vescState.setters.setJoystickX(command.x);
+            vescState.setters.setJoystickY(command.y);
+            console.log(`Direction command added: ${directionText} (${angle}°) -> x: ${command.x}, y: ${command.y}`);
+        }
     }
   });
+
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
