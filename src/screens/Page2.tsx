@@ -152,16 +152,16 @@ const Page2 = ({ vescState}) => {
     // Check if the face is in neutral position
     const isNeutral = Math.abs(angle) < 5;
 
-    // Determine direction based on angle
+    // Convert angle to x, y using unit circle approximation
     let directionText = 'Neutral';
     let command = { x: 0, y: 0 };
     
-    if (angle > 0) {  // positive angle means left
-        directionText = 'Left';
-        command = { x: -1, y: 0 };
-    } else if (angle < 0) { // negative angle means right
-        directionText = 'Right';
-        command = { x: 1, y: 0 };
+    if (!isNeutral) {
+        const radians = (angle * Math.PI) / 180;
+        command.x = Math.sin(radians); // Left (-) or Right (+)
+        command.y = Math.cos(radians); // Forward movement component
+        
+        directionText = angle > 0 ? 'Left' : 'Right';
     }
 
     const currentTime = Date.now();
@@ -184,10 +184,11 @@ const Page2 = ({ vescState}) => {
         if (!isNeutral) {
             vescState.setters.setJoystickX(command.x);
             vescState.setters.setJoystickY(command.y);
-            console.log(`Direction command added: ${directionText} (${angle}°) -> x: ${command.x}, y: ${command.y}`);
+            console.log(`Direction command added: ${directionText} (${angle}°) -> x: ${command.x.toFixed(2)}, y: ${command.y.toFixed(2)}`);
         }
     }
   });
+
 
 
   const frameProcessor = useFrameProcessor((frame) => {
