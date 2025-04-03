@@ -31,7 +31,7 @@ export class VescControlManager {
     // Improved smooth control algorithm with consistent speed response
     
     // Max RPM 
-    const MAX_RPM = 10000;
+    const MAX_RPM = 5000;
     
     // Apply a small deadzone to prevent drift
     const deadzone = 0.1;
@@ -47,7 +47,7 @@ export class VescControlManager {
     
     // Forward/reverse is controlled by Y axis (inverted)
     // Up is negative Y in joystick coordinates
-    const throttle = -yInput;
+    const throttle = yInput;
     
     // Turning is controlled by X axis
     // Use a reduced turn sensitivity for more stability
