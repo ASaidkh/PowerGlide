@@ -126,7 +126,7 @@ const Page3 = ({ vescState }) => {
         
         // Update the global state with normalized values
         vescState.setters.setJoystickX(normalizedX);
-        vescState.setters.setJoystickY(normalizedY); // Invert Y for intuitive control (up is positive)
+        vescState.setters.setJoystickY(-normalizedY); // Invert Y for intuitive control (up is positive)
       },
       onPanResponderRelease: () => {
         // Return joystick to center when released
