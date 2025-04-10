@@ -1,3 +1,4 @@
+// Modified VescControlManager.ts with focused fixes for stopping issues
 import { VescCommands } from './VescCommands';
 import { COMMANDS } from '../constants/vescCommands';
 import { Command } from '../../../App';
@@ -7,12 +8,14 @@ export class VescControlManager {
   state: any;
   canID: number;
   commandProcessingInterval: any;
+  isStopped: boolean; // Add explicit internal stopped state
 
   constructor(vescCommands, stateManager) {
     this.commands = vescCommands;
     this.state = stateManager;
     this.canID = 36;
     this.commandProcessingInterval = null;
+    this.isStopped = true; // Start in stopped state
   }
 
   updateState = (newState) => {
@@ -26,9 +29,12 @@ export class VescControlManager {
     }
   }
 
-  // New function to calculate motor RPM from joystick x,y values
+  // Calculate motor RPM from joystick x,y values
   calculateMotorValues = (x: number, y: number) => {
-    // Improved smooth control algorithm with consistent speed response
+    // If explicitly stopped, always return zero RPM regardless of inputs
+    if (this.isStopped) {
+      return { leftRPM: 0, rightRPM: 0 };
+    }
     
     // Max RPM 
     const MAX_RPM = 5000;
@@ -40,17 +46,13 @@ export class VescControlManager {
     }
     
     // Clean the inputs to handle any numerical imprecision
-    // For example, ensure that (0, 0.99) and (0, 1.0) produce similar results
-    // Round to 2 decimal places for stability
     const xInput = Math.round(Math.max(-1, Math.min(1, x)) * 100) / 100;
     const yInput = Math.round(Math.max(-1, Math.min(1, y)) * 100) / 100;
     
-    // Forward/reverse is controlled by Y axis (inverted)
-    // Up is negative Y in joystick coordinates
+    // Forward/reverse is controlled by Y axis
     const throttle = yInput;
     
     // Turning is controlled by X axis
-    // Use a reduced turn sensitivity for more stability
     const turn = xInput * 0.7; // Only use 70% of turn input for smoother control
     
     // Basic arcade drive formula
@@ -65,7 +67,6 @@ export class VescControlManager {
     }
     
     // Special case handling for pure forward/backward motion
-    // This ensures that small X deviations don't significantly change speed
     if (Math.abs(xInput) < 0.15) {
       // When moving almost straight, prioritize consistent speed over turning
       leftMotor = throttle;
@@ -80,66 +81,90 @@ export class VescControlManager {
     const leftRPM = Math.round(leftMotor * MAX_RPM);
     const rightRPM = Math.round(rightMotor * MAX_RPM);
     
-    // Log for debugging
-    console.log(`Joystick: (${xInput.toFixed(2)}, ${yInput.toFixed(2)}) → Motors: L:${leftRPM}, R:${rightRPM}`);
-    
     return { leftRPM, rightRPM };
   }
 
   startControl = () => {
     const { setControlInterval, setIsRunning } = this.state.setters;
 
-    // Clear any existing interval
+    // Clear any existing interval first
     if (this.state.states.controlInterval) {
       clearInterval(this.state.states.controlInterval);
     }
+    
+    // Update internal state
+    this.isStopped = false;
+    
+    // Update global state
+    setIsRunning(true);
 
-    // Set new interval
+    // Set new interval for motor control
     const newInterval = setInterval(() => {
+      // Add safety check - if we were stopped externally, respect that
+      if (this.isStopped) {
+        console.log("Control loop found isStopped=true, stopping motors");
+        this.commands.setRpmRight(this.canID, 0);
+        this.commands.setRpmLeft(0);
+        return;
+      }
+      
       // Get joystick values from global state
       const { joystickX, joystickY } = this.state.states;
       
       // Calculate motor values using the new function
       const { leftRPM, rightRPM } = this.calculateMotorValues(joystickX, joystickY);
       
-      // Update the state with calculated RPM values
+      // Update UI state with calculated values
       this.state.setters.setLeftMotorRPM(leftRPM);
       this.state.setters.setRightMotorRPM(rightRPM);
       
-      console.log("Setting Left Motor RPM:", leftRPM);
-      console.log("Setting Right Motor RPM:", rightRPM);
-
-      // Send commands to VESC
-      this.commands.setRpmRight(this.canID, leftRPM);  // Set left RPM
-      this.commands.setRpmLeft(rightRPM);  // Set right RPM
+      // Only send non-zero commands if not stopped
+      if (!this.isStopped) {
+        // Send commands to VESC
+        this.commands.setRpmRight(this.canID, leftRPM);
+        this.commands.setRpmLeft(rightRPM);
+      } else {
+        // Ensure motors are stopped if isStopped is true
+        this.commands.setRpmRight(this.canID, 0);
+        this.commands.setRpmLeft(0);
+      }
     }, 200);
 
     // Store the new interval and update the running state
     setControlInterval(newInterval);
-    setIsRunning(true);
-
-    // Start processing commands from the buffer
-    this.startCommandProcessing();
+    
+    console.log("Motor control started");
   };
 
   stopControl = () => {
     const { setControlInterval, setIsRunning } = this.state.setters;
+
+    // Set internal stopped state FIRST
+    this.isStopped = true;
+    
+    // IMPORTANT: Immediately send stop commands to the motors
+    // Don't wait for the next interval or state updates
+    this.commands.setRpmRight(this.canID, 0);
+    this.commands.setRpmLeft(0);
+    
+    // Reset joystick values
+    this.state.setters.setJoystickX(0);
+    this.state.setters.setJoystickY(0);
+    
+    // Reset RPM display values
+    this.state.setters.setLeftMotorRPM(0);
+    this.state.setters.setRightMotorRPM(0);
 
     // Clear the interval if it exists
     if (this.state.states.controlInterval) {
       clearInterval(this.state.states.controlInterval);
     }
 
-    // Stop the command processing
-    this.stopCommandProcessing();
-
-    // Stop the control (set rpm to 0)
-    this.commands.setRpmRight(this.canID, 0);  // Set left RPM
-    this.commands.setRpmLeft(0);  // Set right RPM
-
-    // Reset state
+    // Update global state
     setControlInterval(null);
     setIsRunning(false);
+    
+    console.log("Motor control stopped - motors set to 0 RPM");
   };
 
   // Start continuous logging of VESC values
@@ -154,8 +179,7 @@ export class VescControlManager {
     // Set new logging interval that continuously polls values
     const newLoggingInterval = setInterval(async () => {
       try {
-        const values = await this.commands.getValues();  // Get the values from the VESC
-        console.log("Received VESC values:", values);
+        const values = await this.commands.getValues();
         
         // Format the values for the state
         const formattedValues = {
@@ -187,7 +211,7 @@ export class VescControlManager {
       } catch (error) {
         console.error("Error getting VESC values:", error);
       }
-    }, 2000); // Poll every 20 seconds for VESC values
+    }, 500);
   
     // Store the new interval
     setLoggingInterval(newLoggingInterval);
@@ -206,140 +230,26 @@ export class VescControlManager {
     setLoggingInterval(null);
   };
 
-  // Start processing commands from the buffer
-  startCommandProcessing = () => {
-    // Clear any existing command processing interval
-    if (this.commandProcessingInterval) {
-      clearInterval(this.commandProcessingInterval);
-    }
-
-    // Create new interval to check command buffer
-    this.commandProcessingInterval = setInterval(() => {
-      this.processCommandBuffer();
-    }, 200); // Check buffer every 200ms
-  };
-
-  // Stop processing commands
-  stopCommandProcessing = () => {
-    if (this.commandProcessingInterval) {
-      clearInterval(this.commandProcessingInterval);
-      this.commandProcessingInterval = null;
-    }
-  };
-
-  // Process commands from the buffer
-  processCommandBuffer = () => {
-    // Skip if no commands or not running
-    if (!this.commandBuffer || this.commandBuffer.length === 0 || !this.state.states.isRunning) {
-      return;
-    }
-
-    // Get the oldest command
-    const command = this.commandBuffer[0];
-    console.log('Processing command:', command);
-
-    // Process based on command type
-    if (command.type === 'direction') {
-      this.handleDirectionCommand(command);
-    } else if (command.type === 'voice') {
-      this.handleVoiceCommand(command);
-    }
-
-    // Remove the processed command
-    this.removeCommand(0);
-  };
-
-  // Handle direction commands (left/right with angle)
-  handleDirectionCommand = (command: Command) => {
-    const { value, angle = 0 } = command;
-    
-    // Map direction command to joystick-like input
-    let x = 0;
-    
-    if (value === 'left') {
-      // For left turns, set negative x value proportional to angle
-      x = -Math.min(Math.abs(angle) / 45, 1);
-    } else if (value === 'right') {
-      // For right turns, set positive x value proportional to angle
-      x = Math.min(Math.abs(angle) / 45, 1);
-    }
-    
-    // Update global joystick state (y keeps its current value for forward/reverse motion)
-    this.state.setters.setJoystickX(x);
-    
-    console.log(`Direction command processed: ${value} at ${angle}°, mapped to joystick X: ${x}`);
-  };
-
-  // Handle voice commands
-  handleVoiceCommand = (command: Command) => {
-    const { value } = command;
-    
-    switch (value) {
-      case 'go':
-        // Set to move forward
-        this.state.setters.setJoystickY(-1); // Up is negative y
-        this.state.setters.setJoystickX(0);  // Straight
-        break;
-        
-      case 'reverse':
-        // Set to move backward
-        this.state.setters.setJoystickY(1);  // Down is positive y
-        this.state.setters.setJoystickX(0);  // Straight
-        break;
-        
-      case 'stop':
-        // Stop both motors
-        this.state.setters.setJoystickY(0);
-        this.state.setters.setJoystickX(0);
-        break;
-        
-      case 'speed one':
-        // Low speed (set to 1/3 of max)
-        this.state.setters.setJoystickY(this.state.states.joystickY * 0.33);
-        break;
-        
-      case 'speed two':
-        // Medium speed (set to 2/3 of max)
-        this.state.setters.setJoystickY(this.state.states.joystickY * 0.66);
-        break;
-        
-      case 'speed three':
-        // High speed (full speed)
-        this.state.setters.setJoystickY(this.state.states.joystickY * 1.0);
-        break;
-        
-      case 'left':
-        // Hard left turn
-        this.state.setters.setJoystickX(-0.75);
-        break;
-        
-      case 'right':
-        // Hard right turn
-        this.state.setters.setJoystickX(0.75);
-        break;
-        
-      case 'help me':
-        // Emergency stop and alert
-        this.emergencyStop();
-        break;
-    }
-    
-    console.log(`Voice command processed: ${value}`);
-  };
 
   // Emergency stop
   emergencyStop = () => {
-    // Reset joystick state
+    // Set internal stopped state
+    this.isStopped = true;
+    
+    // Reset joystick values
     this.state.setters.setJoystickX(0);
     this.state.setters.setJoystickY(0);
     
-    // Set motors to 0 RPM
+    // Reset RPM display values
     this.state.setters.setLeftMotorRPM(0);
     this.state.setters.setRightMotorRPM(0);
     
-    // Send emergency stop commands directly
+    // Send stop commands directly
     this.commands.setRpmRight(this.canID, 0);
     this.commands.setRpmLeft(0);
+    
+    // Update global state
+    this.state.setters.setIsRunning(false);
     
     console.log('EMERGENCY STOP ACTIVATED');
   };
