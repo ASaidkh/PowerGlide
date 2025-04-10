@@ -1,3 +1,4 @@
+// Updated VescStateManager with safety violations tracking
 import { useState } from 'react';
 import { VescValues, LogData } from '../types/VescTypes';
 
@@ -17,7 +18,7 @@ export const useVescState = () => {
   const [controlInterval, setControlInterval] = useState(null);
   const [loggingInterval, setLoggingInterval] = useState(null);
   
-  // Joystick states (added for centralized joystick control)
+  // Joystick states
   const [joystickX, setJoystickX] = useState(0);
   const [joystickY, setJoystickY] = useState(0);
 
@@ -41,6 +42,11 @@ export const useVescState = () => {
     tachometer: 0,
     tachometerAbs: 0
   });
+  
+  // Safety states
+  const [safetyViolations, setSafetyViolations] = useState<string[]>([]);
+  const [safetyStopTime, setSafetyStopTime] = useState<Date | null>(null);
+  const [safetyAlertVisible, setSafetyAlertVisible] = useState(false);
 
   return {
     states: {
@@ -58,7 +64,11 @@ export const useVescState = () => {
       pendingPacket,
       controlInterval,
       joystickX,
-      joystickY
+      joystickY,
+      // Safety states
+      safetyViolations,
+      safetyStopTime,
+      safetyAlertVisible
     },
     setters: {
       setIsConnected,
@@ -75,7 +85,11 @@ export const useVescState = () => {
       setPendingPacket,
       setControlInterval,
       setJoystickX,
-      setJoystickY
+      setJoystickY,
+      // Safety setters
+      setSafetyViolations,
+      setSafetyStopTime,
+      setSafetyAlertVisible
     }
   };
 };

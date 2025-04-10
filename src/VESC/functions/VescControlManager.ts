@@ -1,14 +1,57 @@
-// Modified VescControlManager.ts with focused fixes for stopping issues
+// VescControlManager with Auto-Stop Safety System (Updated for Startup Current Spike)
 import { VescCommands } from './VescCommands';
 import { COMMANDS } from '../constants/vescCommands';
 import { Command } from '../../../App';
+import { VescValues } from '../types/VescTypes';
+
+// Define safety thresholds for auto-stop functionality
+const SAFETY_THRESHOLDS = {
+  // Temperature thresholds (in °C)
+  TEMP_MOSFET_MAX: 80,
+  TEMP_MOSFET_RATE: 10, // °C per second
+  TEMP_MOTOR_MAX: 100, 
+  TEMP_MOTOR_RATE: 10, // °C per second
+  
+  // Current thresholds (in A)
+  CURRENT_MOTOR_MAX: 100, // Maximum allowed continuous current
+  CURRENT_MOTOR_RATE: 20, // A per second (for non-startup conditions)
+  CURRENT_INPUT_MAX: 80,  // Maximum allowed input current
+  CURRENT_INPUT_RATE: 20, // A per second (for non-startup conditions)
+  
+  // Duty cycle threshold (0-1)
+  DUTY_CYCLE_RATE: 0.6, // per second
+  
+  // RPM thresholds
+  RPM_MAX: 25000,
+  RPM_RATE: 10000, // RPM per second
+  
+  // Voltage thresholds (in V)
+  VOLTAGE_MIN: 10,
+  VOLTAGE_MAX: 60,
+  VOLTAGE_RATE: 5, // V per second
+  
+  // Startup allowances
+  STARTUP_GRACE_PERIOD_MS: 1000, // 1.5 seconds of reduced sensitivity after start
+  STARTUP_CURRENT_MULTIPLIER: 5.0, // Allow 2x normal current during startup 
+  STARTUP_RATE_MULTIPLIER: 5.0, // Allow 5x normal rate-of-change during startup
+};
 
 export class VescControlManager {
   commands: any;
   state: any;
   canID: number;
   commandProcessingInterval: any;
-  isStopped: boolean; // Add explicit internal stopped state
+  isStopped: boolean;
+  
+  // Safety monitoring system
+  private safetyMonitoringInterval: any;
+  private previousValues: VescValues | null = null;
+  private lastCheckTime: number = 0;
+  private safetyViolations: string[] = [];
+  private consecutiveViolationCount: number = 0;
+  private safetyAlertShown: boolean = false;
+  private motorStartTime: number = 0;
+  private isInStartupPhase: boolean = false;
 
   constructor(vescCommands, stateManager) {
     this.commands = vescCommands;
@@ -16,6 +59,9 @@ export class VescControlManager {
     this.canID = 36;
     this.commandProcessingInterval = null;
     this.isStopped = true; // Start in stopped state
+    this.safetyMonitoringInterval = null;
+    this.motorStartTime = 0;
+    this.isInStartupPhase = false;
   }
 
   updateState = (newState) => {
@@ -29,6 +75,340 @@ export class VescControlManager {
     }
   }
 
+  // Check if we're in the motor startup grace period
+  isInStartupGracePeriod = () => {
+    if (!this.motorStartTime) return false;
+    
+    const currentTime = Date.now();
+    const timeElapsed = currentTime - this.motorStartTime;
+    return timeElapsed < SAFETY_THRESHOLDS.STARTUP_GRACE_PERIOD_MS;
+  }
+
+  // Start safety monitoring system
+  startSafetyMonitoring = () => {
+    console.log("Starting safety monitoring system");
+    
+    // Clear any existing interval
+    if (this.safetyMonitoringInterval) {
+      clearInterval(this.safetyMonitoringInterval);
+    }
+    
+    // Reset safety state
+    this.previousValues = null;
+    this.lastCheckTime = Date.now();
+    this.safetyViolations = [];
+    this.consecutiveViolationCount = 0;
+    this.safetyAlertShown = false;
+    
+    // Record motor start time for startup grace period
+    this.motorStartTime = Date.now();
+    this.isInStartupPhase = true;
+    
+    // Start monitoring interval (check every 200ms)
+    this.safetyMonitoringInterval = setInterval(() => {
+      this.checkSafetyParameters();
+    }, 200);
+    
+    // Schedule end of startup phase
+    setTimeout(() => {
+      this.isInStartupPhase = false;
+      console.log("Motor startup phase ended, normal safety thresholds now active");
+    }, SAFETY_THRESHOLDS.STARTUP_GRACE_PERIOD_MS);
+  }
+  
+  // Stop safety monitoring system
+  stopSafetyMonitoring = () => {
+    console.log("Stopping safety monitoring system");
+    
+    if (this.safetyMonitoringInterval) {
+      clearInterval(this.safetyMonitoringInterval);
+      this.safetyMonitoringInterval = null;
+    }
+    
+    // Reset startup tracking
+    this.motorStartTime = 0;
+    this.isInStartupPhase = false;
+  }
+  
+  // Check safety parameters for all critical values
+  checkSafetyParameters = () => {
+    // Get current values
+    const currentValues = this.state.states.vescValues;
+    const currentTime = Date.now();
+    
+    // Skip if no previous values to compare with
+    if (!this.previousValues || !currentValues) {
+      this.previousValues = {...currentValues};
+      this.lastCheckTime = currentTime;
+      return;
+    }
+    
+    // Check if we're in startup grace period
+    const inStartup = this.isInStartupGracePeriod();
+    
+    // Calculate time delta in seconds
+    const deltaTime = (currentTime - this.lastCheckTime) / 1000;
+    if (deltaTime <= 0) return; // Avoid division by zero
+    
+    // Reset violations for this check
+    const violations: string[] = [];
+    
+    // Check temperature thresholds - no special handling for startup
+    this.checkThreshold(
+      'MOSFET Temperature', 
+      currentValues.tempMosfet,
+      this.previousValues.tempMosfet,
+      deltaTime,
+      SAFETY_THRESHOLDS.TEMP_MOSFET_MAX,
+      SAFETY_THRESHOLDS.TEMP_MOSFET_RATE,
+      '°C',
+      violations,
+      false // Temperature limits same during startup
+    );
+    
+    this.checkThreshold(
+      'Motor Temperature', 
+      currentValues.tempMotor,
+      this.previousValues.tempMotor,
+      deltaTime,
+      SAFETY_THRESHOLDS.TEMP_MOTOR_MAX,
+      SAFETY_THRESHOLDS.TEMP_MOTOR_RATE,
+      '°C',
+      violations,
+      false // Temperature limits same during startup
+    );
+    
+    // Check current thresholds - adjust for startup
+    this.checkThreshold(
+      'Motor Current', 
+      currentValues.currentMotor,
+      this.previousValues.currentMotor,
+      deltaTime,
+      inStartup ? 
+        SAFETY_THRESHOLDS.CURRENT_MOTOR_MAX * SAFETY_THRESHOLDS.STARTUP_CURRENT_MULTIPLIER : 
+        SAFETY_THRESHOLDS.CURRENT_MOTOR_MAX,
+      inStartup ? 
+        SAFETY_THRESHOLDS.CURRENT_MOTOR_RATE * SAFETY_THRESHOLDS.STARTUP_RATE_MULTIPLIER : 
+        SAFETY_THRESHOLDS.CURRENT_MOTOR_RATE,
+      'A',
+      violations,
+      inStartup // Flag that we're using adjusted startup values
+    );
+    
+    this.checkThreshold(
+      'Input Current', 
+      currentValues.currentInput,
+      this.previousValues.currentInput,
+      deltaTime,
+      inStartup ? 
+        SAFETY_THRESHOLDS.CURRENT_INPUT_MAX * SAFETY_THRESHOLDS.STARTUP_CURRENT_MULTIPLIER : 
+        SAFETY_THRESHOLDS.CURRENT_INPUT_MAX,
+      inStartup ? 
+        SAFETY_THRESHOLDS.CURRENT_INPUT_RATE * SAFETY_THRESHOLDS.STARTUP_RATE_MULTIPLIER : 
+        SAFETY_THRESHOLDS.CURRENT_INPUT_RATE,
+      'A',
+      violations,
+      inStartup
+    );
+    
+    // Check duty cycle rate of change - adjust for startup
+    this.checkRateOnly(
+      'Duty Cycle', 
+      currentValues.dutyCycleNow,
+      this.previousValues.dutyCycleNow,
+      deltaTime,
+      inStartup ? 
+        SAFETY_THRESHOLDS.DUTY_CYCLE_RATE * SAFETY_THRESHOLDS.STARTUP_RATE_MULTIPLIER : 
+        SAFETY_THRESHOLDS.DUTY_CYCLE_RATE,
+      '',
+      violations,
+      inStartup
+    );
+    
+    // Check RPM thresholds - adjust rate for startup
+    this.checkThreshold(
+      'RPM', 
+      currentValues.rpm,
+      this.previousValues.rpm,
+      deltaTime,
+      SAFETY_THRESHOLDS.RPM_MAX, // Max RPM stays the same
+      inStartup ? 
+        SAFETY_THRESHOLDS.RPM_RATE * SAFETY_THRESHOLDS.STARTUP_RATE_MULTIPLIER : 
+        SAFETY_THRESHOLDS.RPM_RATE,
+      'RPM',
+      violations,
+      inStartup
+    );
+    
+    // Check voltage range - no special handling for startup
+    this.checkRange(
+      'Voltage',
+      currentValues.voltage,
+      this.previousValues.voltage,
+      deltaTime,
+      SAFETY_THRESHOLDS.VOLTAGE_MIN,
+      SAFETY_THRESHOLDS.VOLTAGE_MAX,
+      SAFETY_THRESHOLDS.VOLTAGE_RATE,
+      'V',
+      violations,
+      false // Voltage limits same during startup
+    );
+    
+    // If violations occurred, track them
+    if (violations.length > 0) {
+      this.safetyViolations = violations;
+      this.consecutiveViolationCount++;
+      
+      // Log violations with additional startup info
+      console.warn(
+        `Safety violations detected (${this.consecutiveViolationCount})${inStartup ? ' [STARTUP PHASE]' : ''}:`, 
+        violations.join(', ')
+      );
+      
+      // If multiple consecutive violations, trigger emergency stop
+      // Require more violations during startup to account for normal spikes
+      const requiredViolations = inStartup ? 7 : 7;
+      
+      if (this.consecutiveViolationCount >= requiredViolations) {
+        this.triggerSafetyStop(violations);
+      }
+    } else {
+      this.safetyViolations = [];
+    }
+    
+    // Update previous values for next check
+    this.previousValues = {...currentValues};
+    this.lastCheckTime = currentTime;
+  }
+  
+  // Helper method to check value against max and rate thresholds
+  checkThreshold = (
+    paramName: string,
+    currentValue: number,
+    previousValue: number,
+    deltaTime: number,
+    maxThreshold: number | null,
+    rateThreshold: number | null,
+    unit: string,
+    violations: string[],
+    isStartupValue: boolean = false
+  ) => {
+    // Check for absolute threshold violation
+    if (maxThreshold !== null && Math.abs(currentValue) > maxThreshold) {
+      violations.push(
+        `${paramName} exceeds maximum ${isStartupValue ? '[STARTUP]' : ''} ` +
+        `(${currentValue.toFixed(2)}${unit} > ${maxThreshold.toFixed(2)}${unit})`
+      );
+      return;
+    }
+    
+    // Check for rate of change violation
+    if (rateThreshold !== null) {
+      const changeRate = Math.abs(currentValue - previousValue) / deltaTime;
+      if (changeRate > rateThreshold) {
+        violations.push(
+          `${paramName} changing too rapidly ${isStartupValue ? '[STARTUP]' : ''} ` +
+          `(${changeRate.toFixed(2)}${unit}/s > ${rateThreshold.toFixed(2)}${unit}/s)`
+        );
+      }
+    }
+  }
+  
+  // Helper method to check value against range and rate thresholds
+  checkRange = (
+    paramName: string,
+    currentValue: number,
+    previousValue: number,
+    deltaTime: number,
+    minThreshold: number,
+    maxThreshold: number,
+    rateThreshold: number | null,
+    unit: string,
+    violations: string[],
+    isStartupValue: boolean = false
+  ) => {
+    // Check for range violation
+    if (currentValue < minThreshold) {
+      violations.push(
+        `${paramName} below minimum ${isStartupValue ? '[STARTUP]' : ''} ` +
+        `(${currentValue.toFixed(2)}${unit} < ${minThreshold.toFixed(2)}${unit})`
+      );
+      return;
+    }
+    
+    if (currentValue > maxThreshold) {
+      violations.push(
+        `${paramName} exceeds maximum ${isStartupValue ? '[STARTUP]' : ''} ` +
+        `(${currentValue.toFixed(2)}${unit} > ${maxThreshold.toFixed(2)}${unit})`
+      );
+      return;
+    }
+    
+    // Check for rate of change violation
+    if (rateThreshold !== null) {
+      const changeRate = Math.abs(currentValue - previousValue) / deltaTime;
+      if (changeRate > rateThreshold) {
+        violations.push(
+          `${paramName} changing too rapidly ${isStartupValue ? '[STARTUP]' : ''} ` +
+          `(${changeRate.toFixed(2)}${unit}/s > ${rateThreshold.toFixed(2)}${unit}/s)`
+        );
+      }
+    }
+  }
+  
+  // Helper method to check only rate of change
+  checkRateOnly = (
+    paramName: string,
+    currentValue: number,
+    previousValue: number,
+    deltaTime: number,
+    rateThreshold: number,
+    unit: string,
+    violations: string[],
+    isStartupValue: boolean = false
+  ) => {
+    const changeRate = Math.abs(currentValue - previousValue) / deltaTime;
+    if (changeRate > rateThreshold) {
+      violations.push(
+        `${paramName} changing too rapidly ${isStartupValue ? '[STARTUP]' : ''} ` +
+        `(${changeRate.toFixed(2)}${unit}/s > ${rateThreshold.toFixed(2)}${unit}/s)`
+      );
+    }
+  }
+  
+  // Trigger safety stop when violations are detected
+  triggerSafetyStop = (violations: string[]) => {
+    // Only trigger if not already stopped
+    if (!this.isStopped) {
+      console.error("SAFETY STOP TRIGGERED:", violations);
+      
+      // Perform emergency stop
+      this.emergencyStop();
+      
+      // Store stop time
+      this.state.setters.setSafetyStopTime?.(new Date());
+      
+      // Store violations for display
+      this.state.setters.setSafetyViolations?.(violations);
+      
+      // Show alert UI if available
+      this.state.setters.setSafetyAlertVisible?.(true);
+      
+      // Show alert to user if we haven't already
+      if (!this.safetyAlertShown && global.Alert) {
+        const message = `Safety stop triggered: ${violations.join(', ')}`;
+        
+        global.Alert.alert(
+          "SAFETY STOP ACTIVATED",
+          message,
+          [{ text: "OK" }]
+        );
+        
+        this.safetyAlertShown = true;
+      }
+    }
+  }
+
   // Calculate motor RPM from joystick x,y values
   calculateMotorValues = (x: number, y: number) => {
     // If explicitly stopped, always return zero RPM regardless of inputs
@@ -37,7 +417,7 @@ export class VescControlManager {
     }
     
     // Max RPM 
-    const MAX_RPM = 5000;
+    const MAX_RPM = 3000;
     
     // Apply a small deadzone to prevent drift
     const deadzone = 0.1;
@@ -95,6 +475,12 @@ export class VescControlManager {
     // Update internal state
     this.isStopped = false;
     
+    // Reset safety state
+    this.safetyAlertShown = false;
+    
+    // Start the safety monitoring system with startup phase
+    this.startSafetyMonitoring();
+    
     // Update global state
     setIsRunning(true);
 
@@ -102,7 +488,7 @@ export class VescControlManager {
     const newInterval = setInterval(() => {
       // Add safety check - if we were stopped externally, respect that
       if (this.isStopped) {
-        console.log("Control loop found isStopped=true, stopping motors");
+       // console.log("Control loop found isStopped=true, stopping motors");
         this.commands.setRpmRight(this.canID, 0);
         this.commands.setRpmLeft(0);
         return;
@@ -133,7 +519,7 @@ export class VescControlManager {
     // Store the new interval and update the running state
     setControlInterval(newInterval);
     
-    console.log("Motor control started");
+    console.log("Motor control started (with startup grace period)");
   };
 
   stopControl = () => {
@@ -141,6 +527,9 @@ export class VescControlManager {
 
     // Set internal stopped state FIRST
     this.isStopped = true;
+    
+    // Stop safety monitoring
+    this.stopSafetyMonitoring();
     
     // IMPORTANT: Immediately send stop commands to the motors
     // Don't wait for the next interval or state updates
@@ -211,7 +600,7 @@ export class VescControlManager {
       } catch (error) {
         console.error("Error getting VESC values:", error);
       }
-    }, 500);
+    }, 400);
   
     // Store the new interval
     setLoggingInterval(newLoggingInterval);
@@ -229,6 +618,7 @@ export class VescControlManager {
     // Reset logging state
     setLoggingInterval(null);
   };
+
 
 
   // Emergency stop
