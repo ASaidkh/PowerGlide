@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking, AppState } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Linking, AppState } from 'react-native';
+import styles from '../utils/Page2styles'; // adjust the path if styles.ts is in a different folder
 import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission, useFrameProcessor } from 'react-native-vision-camera';
 import { useFaceDetector, Face, FaceDetectionOptions } from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core';
@@ -118,7 +119,6 @@ const Page2 = ({ vescState}) => {
     }
   }, [vescState]);
   
-
   const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: Face[]) => {
     setFaces(detectedFaces);
 
@@ -188,8 +188,6 @@ const Page2 = ({ vescState}) => {
         }
     }
   });
-
-
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
@@ -261,118 +259,5 @@ const Page2 = ({ vescState}) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  page: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: 'black' 
-  },
-  button: { 
-    padding: 10, 
-    backgroundColor: '#007AFF', 
-    borderRadius: 5, 
-    margin: 20 
-  },
-  buttonText: { 
-    color: 'white', 
-    fontSize: 18 
-  },
-  icon: { 
-    marginBottom: 30 
-  },
-  title: { 
-    fontSize: 24, 
-    color: 'white' 
-  },
-  micButtonContainer: { 
-    position: 'absolute', 
-    bottom: 50 
-  },
-  micButton: { 
-    padding: 10, 
-    backgroundColor: '#00BFFF', 
-    borderRadius: 5 
-  },
-  controlsContainer: {
-    flexDirection: 'row',
-    position: 'absolute',
-    bottom: 30,
-    justifyContent: 'space-around',
-    width: '80%',
-  },
-  controlButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    backgroundColor: '#1E90FF',
-    marginHorizontal: 10,
-  },
-  cameraActive: {
-    backgroundColor: '#FF4500',
-  },
-  micActive: {
-    backgroundColor: '#32CD32',
-  },
-  angleIndicator: { 
-    position: 'absolute', 
-    bottom: 100, 
-    width: '90%', 
-    alignItems: 'center' 
-  },
-  angleBar: { 
-    width: '100%', 
-    height: 10, 
-    backgroundColor: 'lightgrey', 
-    position: 'relative',
-    borderRadius: 5
-  },
-  anglePointer: { 
-    position: 'absolute', 
-    top: -5, 
-    width: 20, 
-    height: 20, 
-    backgroundColor: 'blue', 
-    borderRadius: 10 
-  },
-  angleLabels: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    width: '100%' 
-  },
-  angleLabel: { 
-    color: 'white', 
-    fontSize: 12 
-  },
-  headDirectionTop: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  headDirectionText: {
-    color: 'white',
-    fontSize: 18,
-  },
-  commandDisplay: {
-    position: 'absolute',
-    top: 100,
-    left: 20,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 10,
-    borderRadius: 5
-  },
-  commandTitle: {
-    color: 'white',
-    fontWeight: 'bold',
-    marginBottom: 5
-  },
-  commandText: {
-    color: 'white',
-    fontSize: 14
-  }
-});
 
 export default Page2;
