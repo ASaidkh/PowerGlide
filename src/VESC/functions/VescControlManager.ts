@@ -14,7 +14,7 @@ const SAFETY_THRESHOLDS = {
   
   // Current thresholds (in A)
   CURRENT_MOTOR_MAX: 100, // Maximum allowed continuous current
-  CURRENT_MOTOR_RATE: 20, // A per second (for non-startup conditions)
+  CURRENT_MOTOR_RATE: 10, // A per second (for non-startup conditions)
   CURRENT_INPUT_MAX: 80,  // Maximum allowed input current
   CURRENT_INPUT_RATE: 20, // A per second (for non-startup conditions)
   
@@ -52,6 +52,7 @@ export class VescControlManager {
   private safetyAlertShown: boolean = false;
   private motorStartTime: number = 0;
   private isInStartupPhase: boolean = false;
+  private tickCount: number = 0;
 
   constructor(vescCommands, stateManager) {
     this.commands = vescCommands;
@@ -92,7 +93,7 @@ export class VescControlManager {
     if (this.safetyMonitoringInterval) {
       clearInterval(this.safetyMonitoringInterval);
     }
-    
+    this.tickCount = 0;
     // Reset safety state
     this.previousValues = null;
     this.lastCheckTime = Date.now();
@@ -143,6 +144,8 @@ export class VescControlManager {
       return;
     }
     
+
+
     // Check if we're in startup grace period
     const inStartup = this.isInStartupGracePeriod();
     
@@ -267,13 +270,19 @@ export class VescControlManager {
       
       // If multiple consecutive violations, trigger emergency stop
       // Require more violations during startup to account for normal spikes
-      const requiredViolations = inStartup ? 7 : 7;
+      const requiredViolations = inStartup ? 2 : 2;
       
       if (this.consecutiveViolationCount >= requiredViolations) {
         this.triggerSafetyStop(violations);
       }
     } else {
       this.safetyViolations = [];
+      this.tickCount += 1;
+
+      if (this.tickCount > 5) {
+        this.consecutiveViolationCount = 0;
+        this.tickCount = 0;
+      }
     }
     
     // Update previous values for next check
@@ -293,11 +302,15 @@ export class VescControlManager {
     violations: string[],
     isStartupValue: boolean = false
   ) => {
+
+    console.log(`${paramName} Value:  ${isStartupValue ? '[STARTUP]' : ''} ` +
+        `(${currentValue.toFixed(2)}${unit} > ${maxThreshold.toFixed(2)}${unit})`);
+
     // Check for absolute threshold violation
     if (maxThreshold !== null && Math.abs(currentValue) > maxThreshold) {
       violations.push(
         `${paramName} exceeds maximum ${isStartupValue ? '[STARTUP]' : ''} ` +
-        `(${currentValue.toFixed(2)}${unit} > ${maxThreshold.toFixed(2)}${unit})`
+        `(${currentValue.toFixed(2)}${unit}, Threshold: ${maxThreshold.toFixed(2)}${unit})`
       );
       return;
     }
