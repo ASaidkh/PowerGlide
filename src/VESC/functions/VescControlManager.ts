@@ -1,4 +1,4 @@
-// VescControlManager with Auto-Stop Safety System (Updated for Startup Current Spike)
+// VescControlManager with Dynamic Startup Detection for RPM Changes
 import { VescCommands } from './VescCommands';
 import { COMMANDS } from '../constants/vescCommands';
 import { Command } from '../../../App';
@@ -14,7 +14,7 @@ const SAFETY_THRESHOLDS = {
   
   // Current thresholds (in A)
   CURRENT_MOTOR_MAX: 100, // Maximum allowed continuous current
-  CURRENT_MOTOR_RATE: 10, // A per second (for non-startup conditions)
+  CURRENT_MOTOR_RATE: 20, // A per second (for non-startup conditions)
   CURRENT_INPUT_MAX: 80,  // Maximum allowed input current
   CURRENT_INPUT_RATE: 20, // A per second (for non-startup conditions)
   
@@ -31,9 +31,13 @@ const SAFETY_THRESHOLDS = {
   VOLTAGE_RATE: 5, // V per second
   
   // Startup allowances
-  STARTUP_GRACE_PERIOD_MS: 1000, // 1.5 seconds of reduced sensitivity after start
-  STARTUP_CURRENT_MULTIPLIER: 5.0, // Allow 2x normal current during startup 
+  STARTUP_GRACE_PERIOD_MS: 2000, // 1 second of reduced sensitivity after significant RPM change
+  STARTUP_CURRENT_MULTIPLIER: 5.0, // Allow 5x normal current during startup 
   STARTUP_RATE_MULTIPLIER: 5.0, // Allow 5x normal rate-of-change during startup
+  
+  // New: RPM change threshold that triggers a new startup phase
+  RPM_CHANGE_THRESHOLD: 100, // RPM difference that triggers a new startup phase
+  RPM_DIRECTION_CHANGE_MULTIPLIER: 0.5, // Lower threshold for direction changes
 };
 
 export class VescControlManager {
@@ -53,6 +57,11 @@ export class VescControlManager {
   private motorStartTime: number = 0;
   private isInStartupPhase: boolean = false;
   private tickCount: number = 0;
+  
+  // New: Track previous RPM values for startup detection
+  private previousLeftRPM: number = 0;
+  private previousRightRPM: number = 0;
+  private lastStartupTime: number = 0;
 
   constructor(vescCommands, stateManager) {
     this.commands = vescCommands;
@@ -63,26 +72,93 @@ export class VescControlManager {
     this.safetyMonitoringInterval = null;
     this.motorStartTime = 0;
     this.isInStartupPhase = false;
+    this.previousLeftRPM = 0;
+    this.previousRightRPM = 0;
+    this.lastStartupTime = 0;
   }
 
   updateState = (newState) => {
     this.state = newState;
   }
 
-  updateCommandBuffer = (newBuffer, newRemoveCommand) => {
-    this.commandBuffer = newBuffer;
-    if (newRemoveCommand) {
-      this.removeCommand = newRemoveCommand;
-    }
-  }
 
   // Check if we're in the motor startup grace period
   isInStartupGracePeriod = () => {
-    if (!this.motorStartTime) return false;
+    if (!this.lastStartupTime) return false;
     
     const currentTime = Date.now();
-    const timeElapsed = currentTime - this.motorStartTime;
+    const timeElapsed = currentTime - this.lastStartupTime;
     return timeElapsed < SAFETY_THRESHOLDS.STARTUP_GRACE_PERIOD_MS;
+  }
+
+  // NEW: Check if RPM change triggers a new startup phase
+  checkForSignificantRPMChange = (leftRPM: number, rightRPM: number): boolean => {
+    // Get absolute RPM changes for both motors
+    const leftRPMChange = Math.abs(leftRPM - this.previousLeftRPM);
+    const rightRPMChange = Math.abs(rightRPM - this.previousRightRPM);
+    
+    // Check for direction changes (sign changes)
+    const leftDirectionChanged = (this.previousLeftRPM * leftRPM < 0) && 
+                                (Math.abs(this.previousLeftRPM) > 100) && 
+                                (Math.abs(leftRPM) > 100);
+    const rightDirectionChanged = (this.previousRightRPM * rightRPM < 0) && 
+                                 (Math.abs(this.previousRightRPM) > 100) && 
+                                 (Math.abs(rightRPM) > 100);
+    
+    // Modify threshold based on whether we're changing direction
+    const threshold = leftDirectionChanged || rightDirectionChanged ? 
+                     SAFETY_THRESHOLDS.RPM_CHANGE_THRESHOLD * SAFETY_THRESHOLDS.RPM_DIRECTION_CHANGE_MULTIPLIER : 
+                     SAFETY_THRESHOLDS.RPM_CHANGE_THRESHOLD;
+    
+    // Check if changes exceed threshold
+    const significantChange = leftRPMChange > threshold || rightRPMChange > threshold || 
+                             leftDirectionChanged || rightDirectionChanged;
+    
+    // Special case for starting from stop
+    const startingFromStop = (Math.abs(this.previousLeftRPM) < 100 && Math.abs(leftRPM) > 100) || 
+                            (Math.abs(this.previousRightRPM) < 100 && Math.abs(rightRPM) > 100);
+    
+    // Only create a new startup phase if we haven't recently started one
+    const currentTime = Date.now();
+    const canStartNewPhase = (currentTime - this.lastStartupTime) > (SAFETY_THRESHOLDS.STARTUP_GRACE_PERIOD_MS / 2);
+    
+    console.log(` == RPM change: L: ${this.previousLeftRPM} -> ${leftRPM}, R: ${this.previousRightRPM} -> ${rightRPM}`)
+    if ((significantChange || startingFromStop) && canStartNewPhase) {
+      console.log(`Significant RPM change detected: L: ${this.previousLeftRPM} -> ${leftRPM}, R: ${this.previousRightRPM} -> ${rightRPM}`);
+      if (leftDirectionChanged || rightDirectionChanged) {
+        console.log(`Direction change detected!`);
+      }
+      if (startingFromStop) {
+        console.log(`Starting from stop!`);
+      }
+      
+      // Update previous values
+      this.previousLeftRPM = leftRPM;
+      this.previousRightRPM = rightRPM;
+      
+      return true;
+    }
+    
+    // Always update previous values
+    this.previousLeftRPM = leftRPM;
+    this.previousRightRPM = rightRPM;
+    
+    return false;
+  }
+
+  // Modified: Start a new startup phase
+  startNewStartupPhase = () => {
+    console.log("Starting new RPM transition phase with higher safety thresholds");
+    this.lastStartupTime = Date.now();
+    this.isInStartupPhase = true;
+    
+    // Schedule end of startup phase
+    setTimeout(() => {
+      if (Date.now() - this.lastStartupTime >= SAFETY_THRESHOLDS.STARTUP_GRACE_PERIOD_MS) {
+        this.isInStartupPhase = false;
+        console.log("RPM transition phase ended, normal safety thresholds now active");
+      }
+    }, SAFETY_THRESHOLDS.STARTUP_GRACE_PERIOD_MS);
   }
 
   // Start safety monitoring system
@@ -101,20 +177,13 @@ export class VescControlManager {
     this.consecutiveViolationCount = 0;
     this.safetyAlertShown = false;
     
-    // Record motor start time for startup grace period
-    this.motorStartTime = Date.now();
-    this.isInStartupPhase = true;
+    // Initial startup phase when first starting control
+    this.startNewStartupPhase();
     
     // Start monitoring interval (check every 200ms)
     this.safetyMonitoringInterval = setInterval(() => {
       this.checkSafetyParameters();
     }, 200);
-    
-    // Schedule end of startup phase
-    setTimeout(() => {
-      this.isInStartupPhase = false;
-      console.log("Motor startup phase ended, normal safety thresholds now active");
-    }, SAFETY_THRESHOLDS.STARTUP_GRACE_PERIOD_MS);
   }
   
   // Stop safety monitoring system
@@ -148,9 +217,10 @@ export class VescControlManager {
 
     // Check if we're in startup grace period
     const inStartup = this.isInStartupGracePeriod();
+    console.log(`Startup Status: ${inStartup}`)
     
     // Calculate time delta in seconds
-    const deltaTime = (currentTime - this.lastCheckTime) / 1000;
+    const deltaTime = Math.max(1, currentTime - this.lastCheckTime) / 1000;
     if (deltaTime <= 0) return; // Avoid division by zero
     
     // Reset violations for this check
@@ -270,7 +340,7 @@ export class VescControlManager {
       
       // If multiple consecutive violations, trigger emergency stop
       // Require more violations during startup to account for normal spikes
-      const requiredViolations = inStartup ? 2 : 2;
+      const requiredViolations = inStartup ? 6 : 2;
       
       if (this.consecutiveViolationCount >= requiredViolations) {
         this.triggerSafetyStop(violations);
@@ -302,9 +372,6 @@ export class VescControlManager {
     violations: string[],
     isStartupValue: boolean = false
   ) => {
-
-    console.log(`${paramName} Value:  ${isStartupValue ? '[STARTUP]' : ''} ` +
-        `(${currentValue.toFixed(2)}${unit} > ${maxThreshold.toFixed(2)}${unit})`);
 
     // Check for absolute threshold violation
     if (maxThreshold !== null && Math.abs(currentValue) > maxThreshold) {
@@ -501,7 +568,6 @@ export class VescControlManager {
     const newInterval = setInterval(() => {
       // Add safety check - if we were stopped externally, respect that
       if (this.isStopped) {
-       // console.log("Control loop found isStopped=true, stopping motors");
         this.commands.setRpmRight(this.canID, 0);
         this.commands.setRpmLeft(0);
         return;
@@ -512,6 +578,13 @@ export class VescControlManager {
       
       // Calculate motor values using the new function
       const { leftRPM, rightRPM } = this.calculateMotorValues(joystickX, joystickY);
+      
+      // NEW: Check if this represents a significant change in RPM that would
+      // warrant a new startup phase with higher current/change thresholds
+      if (this.checkForSignificantRPMChange(leftRPM, rightRPM)) {
+        console.log("==Detected Significant RPM Change, starting startup phase")
+        this.startNewStartupPhase();
+      }
       
       // Update UI state with calculated values
       this.state.setters.setLeftMotorRPM(leftRPM);
@@ -619,20 +692,19 @@ export class VescControlManager {
     setLoggingInterval(newLoggingInterval);
   };
   
+  // Start logging
+  startLogging = () => {
+    // Set logging state
+    this.state.setters.setIsLogging(true);
+    console.log("Logging started");
+  };
+  
   // Stop logging
   stopLogging = () => {
-    const { setLoggingInterval } = this.state.setters;
-  
-    // Clear the logging interval if it exists
-    if (this.state.states.loggingInterval) {
-      clearInterval(this.state.states.loggingInterval);
-    }
-  
-    // Reset logging state
-    setLoggingInterval(null);
+    // Set logging state
+    this.state.setters.setIsLogging(false);
+    console.log("Logging stopped");
   };
-
-
 
   // Emergency stop
   emergencyStop = () => {
