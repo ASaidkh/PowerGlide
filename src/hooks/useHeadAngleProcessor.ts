@@ -9,12 +9,14 @@ import { calculateAngleFromLandmarks, fuseAngleEstimates } from '../utils/FaceUt
 export function useHeadAngleProcessor(vescState) {
   const [headDirection, setHeadDirection] = useState('Neutral');
   const [headAngle, setHeadAngle] = useState(0);
+  const [winkDetected, setWinkDetected] = useState(false); // ✅ New state
 
-  const facesRef = useRef([]);
+  const lastWinkTime = useRef(0);
   const lastProcessedTime = useRef(0);
   const lastRawAngle = useRef(0);
   const lastLoggedTime = useRef(0);
   const wasNeutral = useRef(true);
+
   const angleFilter = useRef(new OneEuroFilter()).current;
 
   const { detectFaces } = useFaceDetector({
@@ -26,6 +28,7 @@ export function useHeadAngleProcessor(vescState) {
 
   const handleDetectedFaces = useCallback((detectedFaces, width, height) => {
     if (detectedFaces.length === 0) return;
+
     const face = detectedFaces[0];
     const { x, width: w } = face.bounds;
     const centerX = width / 2;
@@ -42,6 +45,31 @@ export function useHeadAngleProcessor(vescState) {
     const finalAngle = parseFloat(smoothed.toFixed(1));
 
     setHeadAngle(finalAngle);
+
+    const leftEyeOpen = face.leftEyeOpenProbability ?? 1;
+    const rightEyeOpen = face.rightEyeOpenProbability ?? 1;
+
+    const winkThreshold = 0.3;
+    const leftWink = leftEyeOpen < winkThreshold && rightEyeOpen > 0.6;
+    const rightWink = rightEyeOpen < winkThreshold && leftEyeOpen > 0.6;
+    const wink = leftWink || rightWink;
+
+    const now = Date.now();
+    const winkCooldownMs = 3000;
+
+    if (wink && now - lastWinkTime.current > winkCooldownMs) {
+      lastWinkTime.current = now;
+      setWinkDetected(true); // ✅ set wink detected
+
+      console.log("Wink detected! Sending 'go' command.");
+
+      vescState.setters.setJoystickY(0.5);
+      setTimeout(() => {
+        vescState.setters.setJoystickY(0);
+        setWinkDetected(false); // ✅ reset after 1s
+      }, 1000);
+    }
+
     const neutralThreshold = nativeYaw !== undefined ? 8 : landmarkAngle !== null ? 6 : 5;
     const isNeutral = Math.abs(finalAngle) < neutralThreshold;
 
@@ -64,7 +92,6 @@ export function useHeadAngleProcessor(vescState) {
       y: !isNeutral && Math.abs(vescState.states.joystickY) < 0.1 ? 0.3 : vescState.states.joystickY
     };
 
-    const now = Date.now();
     const timeSinceLastLog = now - lastLoggedTime.current;
     const changed = direction !== headDirection;
     const toNeutral = !wasNeutral.current && isNeutral;
@@ -99,5 +126,10 @@ export function useHeadAngleProcessor(vescState) {
     workletHandler(faces, frame.width, frame.height);
   }, [workletHandler]);
 
-  return { headDirection, headAngle, frameProcessor };
+  return {
+    headDirection,
+    headAngle,
+    frameProcessor,
+    winkDetected, // ✅ now safely returned
+  };
 }
