@@ -31,7 +31,7 @@ const SAFETY_THRESHOLDS = {
   VOLTAGE_RATE: 5, // V per second
   
   // Startup allowances
-  STARTUP_GRACE_PERIOD_MS: 2000, // 1 second of reduced sensitivity after significant RPM change
+  STARTUP_GRACE_PERIOD_MS: 1500, // 1.5 seconds of reduced sensitivity after significant RPM change
   STARTUP_CURRENT_MULTIPLIER: 5.0, // Allow 5x normal current during startup 
   STARTUP_RATE_MULTIPLIER: 5.0, // Allow 5x normal rate-of-change during startup
   
@@ -91,7 +91,7 @@ export class VescControlManager {
     return timeElapsed < SAFETY_THRESHOLDS.STARTUP_GRACE_PERIOD_MS;
   }
 
-  // NEW: Check if RPM change triggers a new startup phase
+  // Check if RPM change triggers a new startup phase
   checkForSignificantRPMChange = (leftRPM: number, rightRPM: number): boolean => {
     // Get absolute RPM changes for both motors
     const leftRPMChange = Math.abs(leftRPM - this.previousLeftRPM);
