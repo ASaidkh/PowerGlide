@@ -9,12 +9,14 @@ import { calculateAngleFromLandmarks, fuseAngleEstimates } from '../utils/FaceUt
 export function useHeadAngleProcessor(vescState) {
   const [headDirection, setHeadDirection] = useState('Neutral');
   const [headAngle, setHeadAngle] = useState(0);
+  const [headCommand, setHeadCommand] = useState<'None' | 'Go' | 'Stop'>('None');
 
-  const facesRef = useRef([]);
   const lastProcessedTime = useRef(0);
   const lastRawAngle = useRef(0);
   const lastLoggedTime = useRef(0);
   const wasNeutral = useRef(true);
+  const lastCommandTime = useRef(0);
+
   const angleFilter = useRef(new OneEuroFilter()).current;
 
   const { detectFaces } = useFaceDetector({
@@ -26,6 +28,7 @@ export function useHeadAngleProcessor(vescState) {
 
   const handleDetectedFaces = useCallback((detectedFaces, width, height) => {
     if (detectedFaces.length === 0) return;
+
     const face = detectedFaces[0];
     const { x, width: w } = face.bounds;
     const centerX = width / 2;
@@ -35,6 +38,8 @@ export function useHeadAngleProcessor(vescState) {
 
     const landmarkAngle = calculateAngleFromLandmarks(face);
     const nativeYaw = face.yawAngle;
+    const nativePitch = face.pitchAngle; // <-- ADD pitch angle detection (up/down)
+
     const fusedAngle = fuseAngleEstimates(nativeYaw, landmarkAngle, positionAngle);
 
     lastRawAngle.current = fusedAngle;
@@ -42,6 +47,39 @@ export function useHeadAngleProcessor(vescState) {
     const finalAngle = parseFloat(smoothed.toFixed(1));
 
     setHeadAngle(finalAngle);
+
+    const now = Date.now();
+    const commandCooldownMs = 3000; // Cooldown between commands (to avoid spamming)
+
+    if (nativePitch !== undefined && now - lastCommandTime.current > commandCooldownMs) {
+      if (nativePitch > 15) {
+        // Head tilted UP (look up)
+        console.log('Head up detected! Sending "go" command.');
+        
+        // Send joystick [0, 1] for go
+        vescState.setters.setJoystickX(0);  // Ensure X is set to 0
+        vescState.setters.setJoystickY(1);  // Set Y to 1 for go
+        setHeadCommand('Go');
+        lastCommandTime.current = now;
+      
+        setTimeout(() => {
+          // Stop command after 1 second to simulate hold
+          vescState.setters.setJoystickX(0);  // Reset X to 0
+          vescState.setters.setJoystickY(0);  // Reset Y to 0 for stop
+          setHeadCommand('None');
+        }, 1000);
+      } else if (nativePitch < -15) {
+        // Head tilted DOWN (look down)
+        console.log('Head down detected! Sending "stop" command.');
+        
+        // Send joystick [0, 0] for stop
+        vescState.setters.setJoystickX(0);  // Ensure X is set to 0
+        vescState.setters.setJoystickY(0);  // Set Y to 0 for stop
+        setHeadCommand('Stop');
+        lastCommandTime.current = now;
+      }      
+    }
+
     const neutralThreshold = nativeYaw !== undefined ? 8 : landmarkAngle !== null ? 6 : 5;
     const isNeutral = Math.abs(finalAngle) < neutralThreshold;
 
@@ -64,7 +102,6 @@ export function useHeadAngleProcessor(vescState) {
       y: !isNeutral && Math.abs(vescState.states.joystickY) < 0.1 ? 0.3 : vescState.states.joystickY
     };
 
-    const now = Date.now();
     const timeSinceLastLog = now - lastLoggedTime.current;
     const changed = direction !== headDirection;
     const toNeutral = !wasNeutral.current && isNeutral;
@@ -99,5 +136,10 @@ export function useHeadAngleProcessor(vescState) {
     workletHandler(faces, frame.width, frame.height);
   }, [workletHandler]);
 
-  return { headDirection, headAngle, frameProcessor };
+  return {
+    headDirection,
+    headAngle,
+    frameProcessor,
+    headCommand, // ✅ now returning head motion based command
+  };
 }
