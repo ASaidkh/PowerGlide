@@ -9,13 +9,13 @@ import { calculateAngleFromLandmarks, fuseAngleEstimates } from '../utils/FaceUt
 export function useHeadAngleProcessor(vescState) {
   const [headDirection, setHeadDirection] = useState('Neutral');
   const [headAngle, setHeadAngle] = useState(0);
-  const [winkDetected, setWinkDetected] = useState(false); // ✅ New state
+  const [headCommand, setHeadCommand] = useState<'None' | 'Go' | 'Stop'>('None');
 
-  const lastWinkTime = useRef(0);
   const lastProcessedTime = useRef(0);
   const lastRawAngle = useRef(0);
   const lastLoggedTime = useRef(0);
   const wasNeutral = useRef(true);
+  const lastCommandTime = useRef(0);
 
   const angleFilter = useRef(new OneEuroFilter()).current;
 
@@ -38,6 +38,8 @@ export function useHeadAngleProcessor(vescState) {
 
     const landmarkAngle = calculateAngleFromLandmarks(face);
     const nativeYaw = face.yawAngle;
+    const nativePitch = face.pitchAngle; // <-- ADD pitch angle detection (up/down)
+
     const fusedAngle = fuseAngleEstimates(nativeYaw, landmarkAngle, positionAngle);
 
     lastRawAngle.current = fusedAngle;
@@ -46,28 +48,36 @@ export function useHeadAngleProcessor(vescState) {
 
     setHeadAngle(finalAngle);
 
-    const leftEyeOpen = face.leftEyeOpenProbability ?? 1;
-    const rightEyeOpen = face.rightEyeOpenProbability ?? 1;
-
-    const winkThreshold = 0.3;
-    const leftWink = leftEyeOpen < winkThreshold && rightEyeOpen > 0.6;
-    const rightWink = rightEyeOpen < winkThreshold && leftEyeOpen > 0.6;
-    const wink = leftWink || rightWink;
-
     const now = Date.now();
-    const winkCooldownMs = 3000;
+    const commandCooldownMs = 3000; // Cooldown between commands (to avoid spamming)
 
-    if (wink && now - lastWinkTime.current > winkCooldownMs) {
-      lastWinkTime.current = now;
-      setWinkDetected(true); // ✅ set wink detected
-
-      console.log("Wink detected! Sending 'go' command.");
-
-      vescState.setters.setJoystickY(0.5);
-      setTimeout(() => {
-        vescState.setters.setJoystickY(0);
-        setWinkDetected(false); // ✅ reset after 1s
-      }, 1000);
+    if (nativePitch !== undefined && now - lastCommandTime.current > commandCooldownMs) {
+      if (nativePitch > 15) {
+        // Head tilted UP (look up)
+        console.log('Head up detected! Sending "go" command.');
+        
+        // Send joystick [0, 1] for go
+        vescState.setters.setJoystickX(0);  // Ensure X is set to 0
+        vescState.setters.setJoystickY(1);  // Set Y to 1 for go
+        setHeadCommand('Go');
+        lastCommandTime.current = now;
+      
+        setTimeout(() => {
+          // Stop command after 1 second to simulate hold
+          vescState.setters.setJoystickX(0);  // Reset X to 0
+          vescState.setters.setJoystickY(0);  // Reset Y to 0 for stop
+          setHeadCommand('None');
+        }, 1000);
+      } else if (nativePitch < -15) {
+        // Head tilted DOWN (look down)
+        console.log('Head down detected! Sending "stop" command.');
+        
+        // Send joystick [0, 0] for stop
+        vescState.setters.setJoystickX(0);  // Ensure X is set to 0
+        vescState.setters.setJoystickY(0);  // Set Y to 0 for stop
+        setHeadCommand('Stop');
+        lastCommandTime.current = now;
+      }      
     }
 
     const neutralThreshold = nativeYaw !== undefined ? 8 : landmarkAngle !== null ? 6 : 5;
@@ -130,6 +140,6 @@ export function useHeadAngleProcessor(vescState) {
     headDirection,
     headAngle,
     frameProcessor,
-    winkDetected, // ✅ now safely returned
+    headCommand, // ✅ now returning head motion based command
   };
 }

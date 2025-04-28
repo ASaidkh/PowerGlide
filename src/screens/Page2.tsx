@@ -21,7 +21,7 @@ const Page2 = ({ vescState }) => {
   const [micOn, setMicOn] = useState(false);
 
   const { result, recognizing, modelLoaded, loadModel, startRecognition, stopRecognition } = useVoskRecognition();
-  const { headAngle, headDirection, frameProcessor, winkDetected } = useHeadAngleProcessor(vescState);
+  const { headAngle, headDirection, frameProcessor } = useHeadAngleProcessor(vescState);
 
   useEffect(() => {
     requestPermissions().then(granted => {
@@ -40,16 +40,6 @@ const Page2 = ({ vescState }) => {
     if (modelLoaded && micOn) startRecognition();
     else stopRecognition();
   }, [modelLoaded, micOn]);
-
-  useEffect(() => {
-    if (winkDetected) {
-      console.log("Wink detected from hook! Sending 'go' command from Page2.");
-      vescState.setters.setJoystickY(0.5);
-      setTimeout(() => {
-        vescState.setters.setJoystickY(0);
-      }, 1000);
-    }
-  }, [winkDetected]);  
 
   useEffect(() => {
     if (result) {
