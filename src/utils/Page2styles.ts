@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
   controlsContainer: {
     flexDirection: 'row',
     position: 'absolute',
-    bottom: 30,
+    bottom: 70,
     justifyContent: 'space-around',
     width: '80%',
   },
@@ -70,8 +70,8 @@ const styles = StyleSheet.create({
   },
   angleIndicator: {
     position: 'absolute',
-    bottom: 100,
-    left: 20,
+    bottom: 130,
+    left: 110,
     width: 200,
   },
   angleBar: {
