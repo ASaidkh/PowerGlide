@@ -52,32 +52,22 @@ export function useHeadAngleProcessor(vescState) {
     const commandCooldownMs = 3000; // Cooldown between commands (to avoid spamming)
 
     if (nativePitch !== undefined && now - lastCommandTime.current > commandCooldownMs) {
-      if (nativePitch > 15) {
-        // Head tilted UP (look up)
+      if (nativePitch > 15 && headCommand !== 'Go') {
+        // Head tilted UP (look up) - GO
         console.log('Head up detected! Sending "go" command.');
-        
-        // Send joystick [0, 1] for go
-        vescState.setters.setJoystickX(0);  // Ensure X is set to 0
-        vescState.setters.setJoystickY(1);  // Set Y to 1 for go
+        vescState.setters.setJoystickX(0);
+        vescState.setters.setJoystickY(1);
         setHeadCommand('Go');
         lastCommandTime.current = now;
-      
-        setTimeout(() => {
-          // Stop command after 1 second to simulate hold
-          vescState.setters.setJoystickX(0);  // Reset X to 0
-          vescState.setters.setJoystickY(0);  // Reset Y to 0 for stop
-          setHeadCommand('None');
-        }, 1000);
-      } else if (nativePitch < -15) {
-        // Head tilted DOWN (look down)
+    
+      } else if (nativePitch < -15 && headCommand !== 'Stop') {
+        // Head tilted DOWN (look down) - STOP
         console.log('Head down detected! Sending "stop" command.');
-        
-        // Send joystick [0, 0] for stop
-        vescState.setters.setJoystickX(0);  // Ensure X is set to 0
-        vescState.setters.setJoystickY(0);  // Set Y to 0 for stop
+        vescState.setters.setJoystickX(0);
+        vescState.setters.setJoystickY(0);
         setHeadCommand('Stop');
         lastCommandTime.current = now;
-      }      
+      }
     }
 
     const neutralThreshold = nativeYaw !== undefined ? 8 : landmarkAngle !== null ? 6 : 5;
