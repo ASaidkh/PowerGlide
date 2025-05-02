@@ -14,7 +14,6 @@ export default function useVoskRecognition() {
       .then(() => {
         setModelLoaded(true);
         console.log('Model loaded successfully');
-        startRecognition(); // Start recognition after the model is loaded
       })
       .catch((e) => {
         setModelLoaded(false);
