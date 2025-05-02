@@ -21,8 +21,8 @@ export default function App() {
   const [index, setIndex] = useState(0);
   const [routes] = useState([
     { key: 'first', title: 'VESC' },
-    { key: 'second', title: 'Camera' },
-    { key: 'third', title: 'GPS' },
+    { key: 'second', title: 'CAMERA' },
+    { key: 'third', title: 'JOYSTICK' },
   ]);
 
   // Shared state for VESC

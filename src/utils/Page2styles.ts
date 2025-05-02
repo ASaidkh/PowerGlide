@@ -3,9 +3,9 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: 'black',
+    justifyContent: 'flex-start',  // Keep elements at the top of the screen
+    alignItems: 'center',
   },
   button: {
     padding: 10,
@@ -24,34 +24,20 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: 'white',
   },
-  controlsContainer: {
-    flexDirection: 'row',
+  topCenterStatusContainer: {
     position: 'absolute',
-    bottom: 70,
-    justifyContent: 'space-around',
-    width: '80%',
-  },
-  controlButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    backgroundColor: '#1E90FF',
-    marginHorizontal: 10,
-  },
-  cameraActive: {
-    backgroundColor: '#FF4500',
-  },
-  micActive: {
-    backgroundColor: '#32CD32',
+    top: 50,  // Adjust this value to move it closer to the top
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
   },
   headDirectionTop: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
     backgroundColor: 'rgba(0,0,0,0.7)',
     padding: 10,
     borderRadius: 5,
     minWidth: 120,
+    marginBottom: 10,
   },
   headDirectionText: {
     color: 'white',
@@ -63,16 +49,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 4,
   },
-  faceDataText: {
-    color: '#7FFF00',
-    fontSize: 12,
-    marginTop: 4,
-  },
   angleIndicator: {
-    position: 'absolute',
-    bottom: 130,
-    left: 110,
+    marginTop: 10,
     width: 200,
+    alignSelf: 'center',
   },
   angleBar: {
     width: '100%',
@@ -91,7 +71,6 @@ const styles = StyleSheet.create({
     marginLeft: -6,
     borderWidth: 1,
     borderColor: 'white',
-    // Add a shadow for better visibility
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
@@ -116,32 +95,19 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
   },
-  voiceIndicator: {
+  controlsContainer: {
+    flexDirection: 'row',
     position: 'absolute',
-    bottom: 150,
-    left: 20,
-    backgroundColor: 'rgba(0,139,0,0.7)',
-    padding: 8,
-    borderRadius: 5,
+    bottom: 85,
+    justifyContent: 'space-around',
+    width: '80%',
   },
-  voiceIndicatorText: {
-    color: 'white',
-    fontSize: 16,
-  },
-  // Debug panel for developers
-  debugPanel: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 10,
-    borderRadius: 5,
-    maxWidth: 200,
-  },
-  debugText: {
-    color: '#AAAAAA',
-    fontSize: 10,
-    fontFamily: 'monospace',
+  controlButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: '#1E90FF',
+    marginHorizontal: 10,
   },
 });
 

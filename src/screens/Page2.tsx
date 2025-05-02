@@ -37,29 +37,28 @@ const Page2 = ({ vescState }) => {
   }, []);
 
   const processVoiceCommand = (text: string) => {
-      const command = text.toLowerCase().trim();
-    
-      const commandMappings: Record<string, { x: number; y: number }> = {
-        'go': { x: 0, y: 1 },
-        'reverse': { x: 0, y: -1 },
-        'speed one': { x: 0, y: 0.4 },
-        'speed two': { x: 0, y: 0.7 },
-        'speed three': { x: 0, y: 1 },
-        'stop': { x: 0, y: 0 },
-        'left': { x: -1, y: 0 },
-        'right': { x: 1, y: 0 },
-        'help me': { x: 0, y: 0 },
-      };
-    
-      for (const [key, value] of Object.entries(commandMappings)) {
-        if (command.includes(key)) {
-          vescState.setters.setJoystickX(value.x);
-          vescState.setters.setJoystickY(value.y);
-          console.log(`Voice command recognized: ${key} -> x: ${value.x}, y: ${value.y}`);
-          break;
-        }
-      }
+    const command = text.toLowerCase().trim();
+    const commandMappings: Record<string, { x: number; y: number }> = {
+      'go': { x: 0, y: 1 },
+      'reverse': { x: 0, y: -1 },
+      'speed one': { x: 0, y: 0.4 },
+      'speed two': { x: 0, y: 0.7 },
+      'speed three': { x: 0, y: 1 },
+      'stop': { x: 0, y: 0 },
+      'left': { x: -1, y: 0 },
+      'right': { x: 1, y: 0 },
+      'help me': { x: 0, y: 0 },
     };
+
+    for (const [key, value] of Object.entries(commandMappings)) {
+      if (command.includes(key)) {
+        vescState.setters.setJoystickX(value.x);
+        vescState.setters.setJoystickY(value.y);
+        console.log(`Voice command recognized: ${key} -> x: ${value.x}, y: ${value.y}`);
+        break;
+      }
+    }
+  };
 
   useEffect(() => {
     if (modelLoaded && micOn) startRecognition();
@@ -89,20 +88,19 @@ const Page2 = ({ vescState }) => {
           {micOn && <VoiceIndicator recognizing={recognizing} />}
         </>
       ) : (
-        <>
+        <View style={styles.cameraClosedContainer}>
+          {/* Only show the icon and text when the camera is closed */}
           <Icon name="wheelchair" size={75} color="white" style={styles.icon} />
           <Text style={styles.title}>Start Glide!</Text>
-          <TouchableOpacity onPress={() => setShowCamera(true)} style={styles.button}>
-            <Text style={styles.buttonText}>Open Camera</Text>
-          </TouchableOpacity>
-        </>
+        </View>
       )}
 
+      {/* Always show the bottom control buttons */}
       <View style={styles.controlsContainer}>
-        <TouchableOpacity onPress={() => setShowCamera(prev => !prev)} style={[styles.controlButton]}>
+        <TouchableOpacity onPress={() => setShowCamera(prev => !prev)} style={styles.controlButton}>
           <Text style={styles.buttonText}>{showCamera ? 'Close Camera' : 'Open Camera'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setMicOn(prev => !prev)} style={[styles.controlButton]}>
+        <TouchableOpacity onPress={() => setMicOn(prev => !prev)} style={styles.controlButton}>
           <Text style={styles.buttonText}>{micOn ? 'Stop Mic' : 'Start Mic'}</Text>
         </TouchableOpacity>
       </View>
