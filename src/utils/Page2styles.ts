@@ -109,6 +109,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E90FF',
     marginHorizontal: 10,
   },
+  cameraOffContainer: {
+    flex: 1,
+    justifyContent: 'center',  // Center this content
+    alignItems: 'center',  // Center horizontally
+    position: 'absolute',  // Keep it on top of everything else
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
 });
 
 export default styles;

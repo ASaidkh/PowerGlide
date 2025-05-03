@@ -88,7 +88,7 @@ const Page2 = ({ vescState }) => {
           {micOn && <VoiceIndicator recognizing={recognizing} />}
         </>
       ) : (
-        <View style={styles.cameraClosedContainer}>
+        <View style={styles.cameraOffContainer}>
           {/* Only show the icon and text when the camera is closed */}
           <Icon name="wheelchair" size={75} color="white" style={styles.icon} />
           <Text style={styles.title}>Start Glide!</Text>
