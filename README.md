@@ -116,6 +116,7 @@ Add command constants in VescCommands.ts
 Implement command functions in appropriate manager
 
 Contributors
+
 Mike: Hardware/Project Lead
 Reta: Application/Software
 Alim: Integration/Communication/Control
