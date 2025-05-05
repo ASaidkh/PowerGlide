@@ -185,9 +185,9 @@ The project includes `Voice_Face_SIM_Control.py`, a Python script that enables t
 
 ## Contributors
 
-- Mike: Integration/Hardware
+- Mike: Project Lead/Hardware
 - Reta: Application/Software
-- Alim: Integration
+- Alim: Integration/Communication/Control
 
 ## License
 
