@@ -1,82 +1,128 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+PowerGlide - Adaptive Wheelchair Control System
+Overview
+PowerGlide is an advanced, adaptive wheelchair control system designed to provide multiple intuitive interfaces for electric wheelchair control. This React Native application integrates with VESC motor controllers to provide precise control through:
 
-# Getting Started
+Face tracking for hands-free direction control
+Voice commands for basic movement
+Touchscreen joystick for traditional control
+Comprehensive safety monitoring system
+The system is designed to enhance mobility independence for users with various physical capabilities, offering three control interfaces in a single application.
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+Features
+Multiple Control Interfaces
+Face Tracking: Control wheelchair direction with head movements
+Head turning for directional control
+Look up for "Go" command
+Look down for "Stop" command
+Voice Recognition: Issue verbal commands
+Supports commands: "go", "reverse", "stop", "left", "right", "speed one/two/three"
+Touch Joystick: Traditional touchscreen control interface
+Intuitive virtual joystick with visual feedback
+Adjustable sensitivity
+Advanced Safety Features
+Auto-stop Safety System:
+Continuous monitoring of critical parameters:
+Motor temperature
+MOSFET temperature
+Current draw
+RPM
+Voltage
+Duty cycle
+Automatic emergency stop when dangerous conditions detected
+Smart detection of startup conditions vs. normal operation
+Technical Capabilities
+VESC Motor Controller Integration:
+Real-time motor parameter monitoring
+Direct command interface via Bluetooth
+Support for dual motor control (left/right)
+Real-time Data Logging:
+Capture motor performance metrics
+Track user inputs and system responses
+Bluetooth Connectivity:
+Automatic device scanning
+Persistent connections
+Robust error handling
+Architecture
+The application is structured with a modular architecture:
 
-## Step 1: Start the Metro Server
+Core Components:
+VESC Connection Manager: Handles BLE communication
+VESC Control Manager: Translates user inputs to motor commands
+VESC State Manager: Maintains application state
+Input Processing:
+Head angle processor with multi-method fusion algorithm
+Voice recognition with command parsing
+Joystick control with position normalization
+User Interface:
+Tab-based navigation between control modes
+Real-time parameter visualization
+Visual feedback for all control interfaces
+Getting Started
+Prerequisites
+Node.js and npm
+React Native development environment
+Android Studio or Xcode
+Bluetooth-enabled device
+VESC motor controller setup for wheelchair
+Installation
+Clone the repository:
+git clone https://github.com/your-username/powerglide-wheelchair.git
+Install dependencies:
+cd powerglide-wheelchair
+npm install
+Install required native modules:
+npm install react-native-ble-plx react-native-vector-icons @react-native-community/slider
+npm install react-native-vision-camera react-native-vision-camera-face-detector
+npm install react-native-vosk
+Install the Vosk speech recognition model:
+Download the small English model from https://alphacephei.com/vosk/models
+Extract to the assets/vosk-model-small-en-us-0.15 directory
+Running the Application
+Android
+npx react-native run-android
+iOS
+npx react-native run-ios
+Usage Guide
+Connection Screen:
+Start by connecting to your VESC controller
+Scan for available devices and select your wheelchair's controller
+Control Modes:
+VESC Tab: Direct control and monitoring of motor parameters
+Camera Tab: Face tracking controls with voice command option
+Joystick Tab: Touch-based directional control
+Safety Features:
+The system will automatically monitor for unsafe conditions
+Emergency stop will activate if anomalies are detected
+Manual stop available in all control interfaces
+Development Guide
+Project Structure
+/src/VESC: Core VESC communication and control components
+/src/components: Reusable UI components
+/src/hooks: Custom React hooks for state management
+/src/screens: Main application screens
+/src/utils: Helper functions and utilities
+Key Components
+VescConnectionManager: Handles BLE device discovery and communication
+VescControlManager: Translates control inputs to motor commands
+useHeadAngleProcessor: Processes face detection data into control signals
+useVoskRecognition: Manages voice command recognition
+Adding New Features
+New Control Method:
+Create a custom hook in /src/hooks
+Integrate with VescState using the existing pattern
+Add UI components in /src/components
+New VESC Commands:
+Add command constants in VescCommands.ts
+Implement command functions in appropriate manager
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
-
-To start Metro, run the following command from the _root_ of your React Native project:
-
-```bash
-# using npm
-npm start -- --reset-cache
-
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Start your Application
-
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
-
-### For Android
-
-```bash
-# using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### For iOS
-
-```bash
-# using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
-
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
-
-## Step 3: Modifying your App
-
-Now that you have successfully run the app, let's modify it.
-
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
-
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Contributors
+Mike: Hardware/Project Lead
+Reta: Application/Software
+Alim: Integration/Communication/Control
 
 
-**EMOTIV Client Secret** (Reta) xPinjVvXUhcQg4OXS4hwsujPFFPDDiqxE1gDMMA8l3kYGpU7VWOqIYD5gbIMPWZK1G6oZ8rUpju2TSi6NnXcAm8EJfz6PAd0fBsKU1MJHDKzLwwPEcqGTpTbmyYgb61P
+Acknowledgments
+VESC Project for the motor controller firmware
+Vosk for the speech recognition engine
+MediaPipe for the face detection technology
+React Native community
