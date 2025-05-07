@@ -39,7 +39,7 @@ const Page2 = ({ vescState }) => {
   const processVoiceCommand = (text: string) => {
     const command = text.toLowerCase().trim();
     const commandMappings: Record<string, { x: number; y: number }> = {
-      'go': { x: 0, y: 1 },
+      'go': { x: 0, y: 0.4 },
       'reverse': { x: 0, y: -1 },
       'speed one': { x: 0, y: 0.4 },
       'speed two': { x: 0, y: 0.7 },
