@@ -100,15 +100,13 @@ const Page1: React.FC<Page1Props> = ({ vescState}) => {
         <View>
           <ValuesDisplay values={vescState.states.vescValues} />
           <VescControls 
-            dutyCycle={vescState.states.dutyCycle}
-            targetCurrent={vescState.states.targetCurrent}
-            RightMotorRPM={vescState.states.RightMotorRPM}
-            LeftMotorRPM={vescState.states.LeftMotorRPM}
             isRunning={vescState.states.isRunning}
-            onDutyCycleChange={vescState.setters.setDutyCycle}
-            onCurrentChange={vescState.setters.setTargetCurrent}
-            onRightMotorRPMchange={vescState.setters.setRightMotorRPM}
-            onLeftMotorRPMchange={vescState.setters.setLeftMotorRPM}
+            MaxSafetyCount = {vescState.states.MaxSafetyCount}
+            MaxRPM = {vescState.states.MaxRPM}
+            onMaxSafetyCountChange={vescState.setters.setMaxSafetyCount}
+            onMaxRPMChange={vescState.setters.setMaxRPM}
+            MaxMotorCurrentRate = {vescState.states.MaxMotorCurrentRate}
+            onMaxMotorCurrentRateChange = {vescState.setters.setMaxMotorCurrentRate}
             onStartStop={() => {
               if (vescState.states.isRunning) {
                 controlManager?.stopControl();
@@ -117,17 +115,7 @@ const Page1: React.FC<Page1Props> = ({ vescState}) => {
               }
             }}
           />
-          <LoggingControls 
-            isLogging={vescState.states.isLogging}
-            logData={vescState.states.logData}
-            onToggleLogging={() => {
-              if (!vescState.states.isLogging) {  // NOT isLogging
-                controlManager?.startLogging();
-              } else {
-                controlManager?.stopLogging();
-              }
-            }}
-          />
+         
         </View>
       )}
     </SafeAreaView>
