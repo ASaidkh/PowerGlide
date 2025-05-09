@@ -40,7 +40,7 @@ const Page2 = ({ vescState }) => {
     const command = text.toLowerCase().trim();
     const commandMappings: Record<string, { x: number; y: number }> = {
       'go': { x: 0, y: 0.4 },
-      'reverse': { x: 0, y: -1 },
+      'reverse': { x: 0, y: -0.4 },
       'speed one': { x: 0, y: 0.4 },
       'speed two': { x: 0, y: 0.7 },
       'speed three': { x: 0, y: 1 },

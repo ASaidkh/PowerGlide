@@ -56,7 +56,7 @@ export function useHeadAngleProcessor(vescState) {
         // Head tilted UP (look up) - GO
         console.log('Head up detected! Sending "go" command.');
         vescState.setters.setJoystickX(0);
-        vescState.setters.setJoystickY(1);
+        vescState.setters.setJoystickY(0.5);
         setHeadCommand('Go');
         lastCommandTime.current = now;
     
