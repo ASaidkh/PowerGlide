@@ -1,16 +1,37 @@
 // screens/Page2.tsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Linking, PermissionsAndroid, Platform } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import Reanimated from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import styles from '../utils/Page2styles';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import styles from '../utils/Page2styles';
 import { usePermissions } from '../hooks/usePermissions';
 import useVoskRecognition from '../hooks/UseVoskRecognition';
 import { useHeadAngleProcessor } from '../hooks/useHeadAngleProcessor';
 import HeadAngleDisplay from '../components/HeadAngleDisplay';
 import VoiceIndicator from '../components/VoiceIndicator';
+
+const requestCallPermission = async (): Promise<boolean> => {
+  if (Platform.OS === 'android') {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CALL_PHONE,
+        {
+          title: 'Phone Call Permission',
+          message: 'App needs permission to make emergency calls.',
+          buttonPositive: 'Allow',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (error) {
+      console.warn('Permission error:', error);
+      return false;
+    }
+  }
+  return true; // iOS handles permission at runtime via Linking
+};
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);
 
@@ -36,7 +57,7 @@ const Page2 = ({ vescState }) => {
     loadModel();
   }, []);
 
-  const processVoiceCommand = (text: string) => {
+  const processVoiceCommand = async (text: string) => {
     const command = text.toLowerCase().trim();
     const commandMappings: Record<string, { x: number; y: number }> = {
       'go': { x: 0, y: 0.4 },
@@ -47,7 +68,6 @@ const Page2 = ({ vescState }) => {
       'stop': { x: 0, y: 0 },
       'left': { x: -1, y: 0 },
       'right': { x: 1, y: 0 },
-      'help me': { x: 0, y: 0 },
     };
 
     for (const [key, value] of Object.entries(commandMappings)) {
@@ -55,7 +75,33 @@ const Page2 = ({ vescState }) => {
         vescState.setters.setJoystickX(value.x);
         vescState.setters.setJoystickY(value.y);
         console.log(`Voice command recognized: ${key} -> x: ${value.x}, y: ${value.y}`);
-        break;
+        return;
+      }
+    }
+
+    if (command.includes('help me')) {
+      console.log('Voice command: help me');
+
+      const granted = await requestCallPermission();
+      if (!granted) {
+        Alert.alert('Permission Denied', 'Cannot place a call without permission.');
+        return;
+      }
+
+      try {
+        const storedNumber = await AsyncStorage.getItem('emergency_contact');
+        
+        if (!storedNumber) {
+          // No contact saved, show an error message
+          Alert.alert('Error', 'No emergency contact saved. Please set one up in the settings.');
+          return;
+        }
+
+        const phoneNumber = `tel:${storedNumber}`;
+        await Linking.openURL(phoneNumber);
+      } catch (error) {
+        Alert.alert('Call Failed', 'Unable to open the dialer.');
+        console.error(error);
       }
     }
   };
