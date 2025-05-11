@@ -16,16 +16,16 @@ export class VescCommands {
   async sendCommand(commandId: number, data: number[] = []) {
     try {
       const startTime = performance.now();
-      console.log(`[TIMING] sendCommand start - Command ID: ${commandId}`);
+      ////console.log(`[TIMING] sendCommand start - Command ID: ${commandId}`);
 
       // Log the original data
-      console.log('Sending Command ID:', commandId, "  Data:", data);
+      //console.log('Sending Command ID:', commandId, "  Data:", data);
 
       // Create the packet
       const packetStartTime = performance.now();
       const packet = PacketAssembly.createPacket(commandId, data);
       const packetEndTime = performance.now();
-      console.log(`[TIMING] Packet creation took ${(packetEndTime - packetStartTime).toFixed(2)}ms`);
+      ////console.log(`[TIMING] Packet creation took ${(packetEndTime - packetStartTime).toFixed(2)}ms`);
 
       // Log the packet in Base64 format
       const base64Packet = Buffer.from(packet).toString('base64');
@@ -36,12 +36,12 @@ export class VescCommands {
       .then(() => {
         // Success code
         const sendEndTime = performance.now();
-        console.log(`[TIMING] BLE write operation took ${(sendEndTime - sendStartTime).toFixed(2)}ms`);
-        console.log("Wrote: ", base64Packet);
+      //  //console.log(`[TIMING] BLE write operation took ${(sendEndTime - sendStartTime).toFixed(2)}ms`);
+        //console.log("Wrote: ", base64Packet);
       });
       
       const endTime = performance.now();
-      console.log(`[TIMING] Total sendCommand execution took ${(endTime - startTime).toFixed(2)}ms`);
+    //  //console.log(`[TIMING] Total sendCommand execution took ${(endTime - startTime).toFixed(2)}ms`);
     } catch (error) {
       console.error('Error sending command:', error);
       throw error;
@@ -51,7 +51,7 @@ export class VescCommands {
 
   async parseVescValues(data: Buffer) {
     const startTime = performance.now();
-    console.log(`[TIMING] parseVescValues start - Buffer size: ${data.length}`);
+   // //console.log(`[TIMING] parseVescValues start - Buffer size: ${data.length}`);
     
     try {
       let offset = 0;
@@ -130,7 +130,7 @@ export class VescCommands {
       }
       
       const readingEndTime = performance.now();
-      console.log(`[TIMING] Reading all values took ${(readingEndTime - readingStartTime).toFixed(2)}ms`);
+      ////console.log(`[TIMING] Reading all values took ${(readingEndTime - readingStartTime).toFixed(2)}ms`);
 
       // Check remaining buffer size and handle additional fields
       const remaining = data.length - offset;
@@ -185,13 +185,13 @@ export class VescCommands {
       }
 
       const endTime = performance.now();
-      console.log(`[TIMING] Total parseVescValues execution took ${(endTime - startTime).toFixed(2)}ms`);
+     // //console.log(`[TIMING] Total parseVescValues execution took ${(endTime - startTime).toFixed(2)}ms`);
       
       return values;
 
     } catch (error) {
       const endTime = performance.now();
-      console.error(`[TIMING] parseVescValues failed after ${(endTime - startTime).toFixed(2)}ms:`, error);
+     // console.error(`[TIMING] parseVescValues failed after ${(endTime - startTime).toFixed(2)}ms:`, error);
       throw error;
     }
   }
@@ -208,7 +208,7 @@ export class VescCommands {
 
   async forwardCanFrame(canId: number, CanCommandId: number, CommCommandId: number, data: Buffer) {
     const startTime = performance.now();
-    console.log(`[TIMING] forwardCanFrame start`);
+    ////console.log(`[TIMING] forwardCanFrame start`);
     
     // Frame ID needs to be 4 bytes total
     // VESC ID in lower 8 bits, Command ID in next 8 bits
@@ -218,33 +218,34 @@ export class VescCommands {
     frameIdBuffer.writeInt32BE(frameId,0);
     frameIdBuffer.writeUInt8(CommCommandId,4);
     
-    console.log("Frame ID buffer:", frameIdBuffer);
+    //console.log("Frame ID buffer:", frameIdBuffer);
     
     // Data should stay in Big Endian
     const frameData = Array.from(frameIdBuffer).concat(Array.from(data));
 
-    console.log("Complete CAN frame data:", frameData);
+    //console.log("Complete CAN frame data:", frameData);
     
     await this.sendCommand(COMMANDS.CAN_FWD_FRAME, frameData);
     
     const endTime = performance.now();
-    console.log(`[TIMING] forwardCanFrame completed in ${(endTime - startTime).toFixed(2)}ms`);
+    //
+    // //console.log(`[TIMING] forwardCanFrame completed in ${(endTime - startTime).toFixed(2)}ms`);
   }
 
   async setRpmRight(canId: number, rpm: number) {
     const startTime = performance.now();
-    console.log(`[TIMING] setRpmRight start - RPM: ${rpm}`);
+    ////console.log(`[TIMING] setRpmRight start - RPM: ${rpm}`);
     
     // For CAN, data values should be Big Endian
     const buffer = Buffer.alloc(4);
     buffer.writeInt32BE(rpm, 0);  // Use BE for values
 
-    console.log("CAN RPM BUFFER:", buffer);
+    //console.log("CAN RPM BUFFER:", buffer);
     
     await this.forwardCanFrame(canId, COMMANDS.CAN_PACKET_SET_RPM, COMMANDS.SET_RPM, buffer);
     
     const endTime = performance.now();
-    console.log(`[TIMING] setRpmRight completed in ${(endTime - startTime).toFixed(2)}ms`);
+    ////console.log(`[TIMING] setRpmRight completed in ${(endTime - startTime).toFixed(2)}ms`);
   }
 
 
@@ -259,7 +260,7 @@ export class VescCommands {
     const buffer = Buffer.alloc(4); // 4 bytes for a 32-bit integer
     buffer.writeInt32BE(scaledDuty, 0); // Store as a 32-bit integer in big-endian format
   
-    console.log("Scaled Duty Cycle (int32): ", scaledDuty, "Original Duty:", duty);
+    //console.log("Scaled Duty Cycle (int32): ", scaledDuty, "Original Duty:", duty);
     
     // Convert the buffer to an array of bytes
     const dutyData = Array.from(buffer);
@@ -271,7 +272,7 @@ export class VescCommands {
 
 async setRpmLeft(rpm: number) {
   const startTime = performance.now();
-  console.log(`[TIMING] setRpmLeft start - RPM: ${rpm}`);
+  ////console.log(`[TIMING] setRpmLeft start - RPM: ${rpm}`);
   
   // No scaling needed for RPM as per VESC firmware
   const scaledRpm = Math.round(rpm); // Just round to ensure integer
@@ -280,7 +281,7 @@ async setRpmLeft(rpm: number) {
   const buffer = Buffer.alloc(4);
   buffer.writeInt32BE(scaledRpm, 0);
 
-  console.log("RPM value (int32):", scaledRpm, "Original RPM:", rpm);
+  //console.log("RPM value (int32):", scaledRpm, "Original RPM:", rpm);
 
   // Convert buffer to array of bytes
   const rpmData = Array.from(buffer);
@@ -289,7 +290,7 @@ async setRpmLeft(rpm: number) {
   await this.sendCommand(COMMANDS.SET_RPM, rpmData);
   
   const endTime = performance.now();
-  console.log(`[TIMING] setRpmLeft completed in ${(endTime - startTime).toFixed(2)}ms`);
+  ////console.log(`[TIMING] setRpmLeft completed in ${(endTime - startTime).toFixed(2)}ms`);
 }
   
   
@@ -303,7 +304,7 @@ async setCurrent(current: number) {
   const buffer = Buffer.alloc(4);
   buffer.writeInt32BE(scaledCurrent, 0);
 
-  console.log("Scaled Current (int32):", scaledCurrent, "Original Current:", current);
+  //console.log("Scaled Current (int32):", scaledCurrent, "Original Current:", current);
 
   // Convert buffer to array of bytes
   const currentData = Array.from(buffer);
@@ -328,7 +329,7 @@ async setCurrent(current: number) {
 
 async getValues(): Promise<any> {
   const totalStartTime = performance.now();
-  console.log(`[TIMING] getValues START`);
+  ////console.log(`[TIMING] getValues START`);
   
   const txChar = this.txCharacteristic;
   
@@ -341,12 +342,12 @@ async getValues(): Promise<any> {
           const currentTime = performance.now();
           if (monitorStartTime === 0) {
               monitorStartTime = currentTime;
-              console.log(`[TIMING] BLE monitor started`);
+             // //console.log(`[TIMING] BLE monitor started`);
           }
           
           if (error) {
               const monitorTime = currentTime - monitorStartTime;
-              console.log(`[TIMING] BLE monitor error after ${monitorTime.toFixed(2)}ms`);
+            //  //console.log(`[TIMING] BLE monitor error after ${monitorTime.toFixed(2)}ms`);
               dataHandler.remove();
               reject(error);
               return;
@@ -357,64 +358,64 @@ async getValues(): Promise<any> {
           }
           
           const packetTime = currentTime - monitorStartTime;
-          console.log(`[TIMING] BLE packet received after ${packetTime.toFixed(2)}ms`);
+          ////console.log(`[TIMING] BLE packet received after ${packetTime.toFixed(2)}ms`);
           
           // Decode from Base64 first
           const decodeStartTime = performance.now();
           const decodedPacket = Buffer.from(characteristic.value, 'base64');
           const decodeEndTime = performance.now();
           
-          console.log(`[TIMING] Base64 decoding took ${(decodeEndTime - decodeStartTime).toFixed(2)}ms`);
-          console.log("Decoded packet:", decodedPacket);
+         // //console.log(`[TIMING] Base64 decoding took ${(decodeEndTime - decodeStartTime).toFixed(2)}ms`);
+          //console.log("Decoded packet:", decodedPacket);
           
           if (expectedLength === -1) {
               if (decodedPacket[0] === 2) { // Start byte
                   expectedLength = decodedPacket[1];
                   dataBuffer = Buffer.concat([dataBuffer, decodedPacket.slice(2)]);
-                  console.log(`[TIMING] Found start byte, expecting ${expectedLength} bytes of data`);
+             //     //console.log(`[TIMING] Found start byte, expecting ${expectedLength} bytes of data`);
               }
           } else if (expectedLength !== -1) {
               const concatStartTime = performance.now();
               dataBuffer = Buffer.concat([dataBuffer, decodedPacket]);
               const concatEndTime = performance.now();
               
-              console.log(`[TIMING] Buffer concatenation took ${(concatEndTime - concatStartTime).toFixed(2)}ms`);
-              console.log(`[TIMING] Buffer length: ${dataBuffer.length}, Expected: ${expectedLength}`);
+            //  //console.log(`[TIMING] Buffer concatenation took ${(concatEndTime - concatStartTime).toFixed(2)}ms`);
+           //   //console.log(`[TIMING] Buffer length: ${dataBuffer.length}, Expected: ${expectedLength}`);
               
               if (dataBuffer.length >= expectedLength) {
                   const totalMonitorTime = performance.now() - monitorStartTime;
-                  console.log(`[TIMING] Complete data received after ${totalMonitorTime.toFixed(2)}ms`);
+              //    //console.log(`[TIMING] Complete data received after ${totalMonitorTime.toFixed(2)}ms`);
                   
                   dataHandler.remove();
                   
                   try {
                       const parseStartTime = performance.now();
                       const actualData = dataBuffer.slice(1, expectedLength);
-                      console.log("[TIMING] Parsing Data of length:", actualData.length);
+                      ////console.log("[TIMING] Parsing Data of length:", actualData.length);
                       
                       // Call parseVescValues without await
                       this.parseVescValues(actualData)
                         .then(values => {
                           const parseEndTime = performance.now();
                           
-                          console.log(`[TIMING] parseVescValues completed in ${(parseEndTime - parseStartTime).toFixed(2)}ms`);
-                          console.log("[TIMING] Parsed Values:", values);
+                          ////console.log(`[TIMING] parseVescValues completed in ${(parseEndTime - parseStartTime).toFixed(2)}ms`);
+                          ////console.log("[TIMING] Parsed Values:", values);
                           
                           // Clear the buffer after successful parsing
                           dataBuffer = Buffer.alloc(0);
                           expectedLength = -1;
                           
                           const totalTime = performance.now() - totalStartTime;
-                          console.log(`[TIMING] getValues total execution time: ${totalTime.toFixed(2)}ms`);
+                         // //console.log(`[TIMING] getValues total execution time: ${totalTime.toFixed(2)}ms`);
                           
                           resolve(values);
                         })
                         .catch(err => {
-                          console.error('[TIMING] Error in parsing:', err);
+                       //   console.error('[TIMING] Error in parsing:', err);
                           reject(err);
                         });
                   } catch (err) {
-                      console.error('[TIMING] Error in parsing setup:', err);
+                     // console.error('[TIMING] Error in parsing setup:', err);
                       reject(err);
                   }
               }
@@ -425,11 +426,11 @@ async getValues(): Promise<any> {
           const commandStartTime = performance.now();
           await this.sendCommand(COMMANDS.GET_VALUES, []);
           const commandEndTime = performance.now();
-          console.log(`[TIMING] sendCommand for GET_VALUES took ${(commandEndTime - commandStartTime).toFixed(2)}ms`);
+        //  //console.log(`[TIMING] sendCommand for GET_VALUES took ${(commandEndTime - commandStartTime).toFixed(2)}ms`);
       } catch (err) {
           dataHandler.remove();
           const errorTime = performance.now() - totalStartTime;
-          console.error(`[TIMING] Error in getValues after ${errorTime.toFixed(2)}ms:`, err);
+          //console.error(`[TIMING] Error in getValues after ${errorTime.toFixed(2)}ms:`, err);
           reject(err);
       }
 

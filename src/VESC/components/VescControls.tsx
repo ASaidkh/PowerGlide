@@ -15,6 +15,7 @@ export const VescControls = ({
   LeftMotorRPM
 }) => {
   return (
+
     <View style={styles.controlsContainer}>
       {/*
       <View style={styles.controlGroup}>
@@ -67,8 +68,6 @@ export const VescControls = ({
       </View>
       
 
-     
-
       <TouchableOpacity 
         style={[styles.controlButton, isRunning ? styles.stopButton : styles.goButton]}
         onPress={onStartStop}
@@ -77,6 +76,10 @@ export const VescControls = ({
           {isRunning ? 'STOP' : 'GO'}
         </Text>
       </TouchableOpacity>
+
+
     </View>
+
+    
   );
 };

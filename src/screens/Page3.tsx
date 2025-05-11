@@ -1,28 +1,24 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, PermissionsAndroid, PanResponder, Animated } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-
-const Page3 = () => {
-  const [hasLocationPermission, setHasLocationPermission] = useState(false);
-  const joystickPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  PanResponder, 
+  Animated, 
+  SafeAreaView,
+  TouchableOpacity,
+  Alert
+} from 'react-native';
 
 const Page3 = ({ vescState }) => {
-  // Get the VESC state from the global state manager
-  
-  // Define constants inside the component
-  const JOYSTICK_SIZE = 150;
-  const HANDLE_SIZE = 50;
+  // Define constants with larger sizes
+  const JOYSTICK_SIZE = 350;
+  const HANDLE_SIZE = 80;
   const MAX_DISTANCE = (JOYSTICK_SIZE - HANDLE_SIZE) / 2;
-  const MAX_RPM = 4000; // Maximum RPM for the motors
-  const CAN_ID = 36; // CAN ID for the secondary VESC (left motor)
   
-  // Joystick state
-  const [joystickX, setJoystickX] = useState(0);
-  const [joystickY, setJoystickY] = useState(0);
-  
-  // Motor RPM state (local copies for display)
-  const [leftMotorRPM, setLeftMotorRPM] = useState(0);
-  const [rightMotorRPM, setRightMotorRPM] = useState(0);
+  // Local state for display purposes
+  const [displayLeftMotorRPM, setDisplayLeftMotorRPM] = useState(0);
+  const [displayRightMotorRPM, setDisplayRightMotorRPM] = useState(0);
   
   // Active state for enabling/disabling motor control
   const [isActive, setIsActive] = useState(false);
@@ -33,52 +29,13 @@ const Page3 = ({ vescState }) => {
   // Animated values for the joystick position
   const pan = useRef(new Animated.ValueXY()).current;
 
- 
-  
+  // Update display when actual motor RPM values change
   useEffect(() => {
-    // This will run whenever vescState.states.isConnected changes
-    console.log("Connection status in Page3:", vescState.states.isConnected);
-    // You could also set a local state here if needed
-  }, [vescState.states.isConnected]);
-
-  // Convert joystick position to motor RPM values
-  const calculateMotorRPM = (x, y) => {
-    // Convert normalized joystick values (-1 to 1) to motor RPM
-    
-    // Forward/backward motion (throttle) comes from Y axis
-    const throttle = y;
-    
-    // Steering comes from X axis
-    const steering = x;
-    
-    // Calculate left and right motor RPM using differential steering formula
-    let leftRPM, rightRPM;
-    
-    // Basic differential drive algorithm
-    if (throttle >= 0) {
-      // Moving forward
-      leftRPM = MAX_RPM * (throttle + steering);
-      rightRPM = MAX_RPM * (throttle - steering);
-    } else {
-      // Moving backward
-      leftRPM = MAX_RPM * (throttle - steering);
-      rightRPM = MAX_RPM * (throttle + steering);
-    }
-    
-    // Implement "turn in place" when there's steering but no throttle
-    if (Math.abs(throttle) < 0.1 && Math.abs(steering) > 0.1) {
-      leftRPM = MAX_RPM * steering;
-      rightRPM = -MAX_RPM * steering;
-    }
-    
-    // Clamp values to prevent exceeding MAX_RPM
-    leftRPM = Math.max(-MAX_RPM, Math.min(MAX_RPM, leftRPM));
-    rightRPM = Math.max(-MAX_RPM, Math.min(MAX_RPM, rightRPM));
-    
-    return { leftRPM, rightRPM };
-  };
+    setDisplayLeftMotorRPM(vescState.states.LeftMotorRPM);
+    setDisplayRightMotorRPM(vescState.states.RightMotorRPM);
+  }, [vescState.states.LeftMotorRPM, vescState.states.RightMotorRPM]);
   
-  // Start sending commands to the VESC
+  // Start sending joystick values to the global state
   const startControl = () => {
     if (!vescState.states.isConnected) {
       Alert.alert('Not Connected', 'Please connect to VESC first');
@@ -93,39 +50,57 @@ const Page3 = ({ vescState }) => {
     // Set the active flag
     setIsActive(true);
     
-    // Start the control interval
-    controlIntervalRef.current = setInterval(() => {
-      const { leftRPM, rightRPM } = calculateMotorRPM(joystickX, joystickY);
-      
-      // Update local state for display
-      setLeftMotorRPM(Math.round(leftRPM));
-      setRightMotorRPM(Math.round(rightRPM));
-      
-      // Update the global state
-      vescState.setters.setLeftMotorRPM(Math.round(leftRPM));
-      vescState.setters.setRightMotorRPM(Math.round(rightRPM));
-      
-      // Send the commands
-      try {
-        // Access the control manager from Page1 via the global state
-        if (vescState.states.controlInterval) {
-          clearInterval(vescState.states.controlInterval);
-          vescState.setters.setControlInterval(null);
-        }
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        setHasLocationPermission(true);
-      } else {
-        Alert.alert('Permission Denied', 'Location access is required to proceed.');
-      }
-    } catch (err) {
-      console.warn(err);
+    // If there's an existing control interval in the VESC state, we need to ensure
+    // it's running with our joystick values
+    if (!vescState.states.isRunning && vescState.states.isConnected) {
+      // Tell the state manager to start the motors
+      vescState.setters.setIsRunning(true);
     }
   };
-
+  
+  // Stop sending commands
+  const stopControl = () => {
+    // Clear any local interval
+    if (controlIntervalRef.current) {
+      clearInterval(controlIntervalRef.current);
+      controlIntervalRef.current = null;
+    }
+    
+    // Reset the active flag
+    setIsActive(false);
+    
+    // Reset joystick position in global state
+    vescState.setters.setJoystickX(0);
+    vescState.setters.setJoystickY(0);
+    
+    // If the motors are running, stop them
+    if (vescState.states.isRunning) {
+      vescState.setters.setIsRunning(false);
+    }
+  };
+  
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (controlIntervalRef.current) {
+        clearInterval(controlIntervalRef.current);
+      }
+      // Reset joystick values when leaving this page
+      vescState.setters.setJoystickX(0);
+      vescState.setters.setJoystickY(0);
+    };
+  }, []);
+  
+  // Create the pan responder for touch control
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        // No longer using setOffset which can cause issues
+        // Just start from current position
+        pan.setValue({ x: 0, y: 0 });
+      },
       onPanResponderMove: (_, gestureState) => {
         const { dx, dy } = gestureState;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -133,19 +108,32 @@ const Page3 = ({ vescState }) => {
 
         if (distance > maxDistance) {
           const angle = Math.atan2(dy, dx);
-          const x = maxDistance * Math.cos(angle);
-          const y = maxDistance * Math.sin(angle);
-          joystickPosition.setValue({ x, y });
-        } else {
-          joystickPosition.setValue({ x: dx, y: dy });
+          newX = MAX_DISTANCE * Math.cos(angle);
+          newY = MAX_DISTANCE * Math.sin(angle);
         }
+        
+        // Update the animated value for visual feedback
+        pan.setValue({ x: newX, y: newY });
+        
+        // Calculate normalized joystick values (-1 to 1)
+        const normalizedX = parseFloat((newX / MAX_DISTANCE).toFixed(2));
+        const normalizedY = parseFloat((newY / MAX_DISTANCE).toFixed(2));
+        
+        // Update the global state with normalized values
+        vescState.setters.setJoystickX(normalizedX);
+        vescState.setters.setJoystickY(-normalizedY); // Invert Y for intuitive control (up is positive)
       },
       onPanResponderRelease: () => {
-        Animated.spring(joystickPosition, {
+        // Return joystick to center when released
+        Animated.spring(pan, {
           toValue: { x: 0, y: 0 },
           useNativeDriver: false,
         }).start();
-      },
+        
+        // Reset joystick values in global state to zero
+        vescState.setters.setJoystickX(0);
+        vescState.setters.setJoystickY(0);
+      }
     })
   ).current;
 
@@ -158,11 +146,42 @@ const Page3 = ({ vescState }) => {
           <Text style={styles.buttonText}>Request Location Access</Text>
         </TouchableOpacity>
       </View>
-    );
-  }
-
-  return (
-    <View style={styles.page}>
+      
+      <View style={styles.valueContainer}>
+        <View>
+          <Text style={styles.valueText}>Joystick X: {vescState.states.joystickX.toFixed(2)}</Text>
+          <Text style={styles.valueText}>Joystick Y: {vescState.states.joystickY.toFixed(2)}</Text>
+        </View>
+        <View>
+          <Text style={styles.valueText}>Left RPM: {displayLeftMotorRPM}</Text>
+          <Text style={styles.valueText}>Right RPM: {displayRightMotorRPM}</Text>
+        </View>
+      </View>
+      
+      <TouchableOpacity 
+        style={[
+          styles.controlButton, 
+          isActive ? styles.activeButton : styles.inactiveButton,
+          !vescState.states.isConnected && styles.disabledButton
+        ]}
+        onPress={() => {
+          if (vescState.states.isConnected) {
+            if (isActive) {
+              stopControl();
+            } else {
+              startControl();
+            }
+          } else {
+            Alert.alert('Not Connected', 'Please connect to VESC on the Connections page first');
+          }
+        }}
+        disabled={!vescState.states.isConnected}
+      >
+        <Text style={styles.buttonText}>
+          {isActive ? 'JOYSTICK ACTIVE' : 'JOYSTICK INACTIVE'}
+        </Text>
+      </TouchableOpacity>
+      
       <View style={styles.joystickContainer}>
         <View style={styles.outerCircle}>
           <Animated.View
@@ -174,14 +193,25 @@ const Page3 = ({ vescState }) => {
                   { translateY: joystickPosition.y },
                 ],
               },
+              !vescState.states.isConnected && styles.handleDisabled
             ]}
-            {...panResponder.panHandlers}
-          >
-            <Icon name="radio-button-checked" size={50} color="white" />
-          </Animated.View>
+            {...panResponder.panHandlers}  // Always apply panHandlers regardless of isActive
+          />
         </View>
       </View>
-    </View>
+      
+      <View style={styles.instructionsContainer}>
+        <Text style={styles.instructions}>
+          Drag the joystick to control motor speed and direction.
+        </Text>
+        <Text style={styles.instructions}>
+          Y-axis: Forward/Reverse speed
+        </Text>
+        <Text style={styles.instructions}>
+          X-axis: Steering (turn left/right)
+        </Text>
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -218,6 +248,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 100,
     justifyContent: 'center',
+    marginVertical: 10,
+    width: '100%'
+  },
+  joystickBase: {
+    backgroundColor: '#ecf0f1',
+    borderWidth: 3,
+    borderColor: '#bdc3c7',
     alignItems: 'center',
   },
   outerCircle: {
@@ -226,15 +263,53 @@ const styles = StyleSheet.create({
     borderRadius: 150,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
-    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8
+  },
+  joystickDisabled: {
+    backgroundColor: '#d5dbdb',
+    borderColor: '#95a5a6',
+    opacity: 0.7
   },
   joystick: {
     position: 'absolute',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'blue',
-    justifyContent: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    borderWidth: 2,
+    borderColor: '#2980b9'
+  },
+  handleDisabled: {
+    backgroundColor: '#7f8c8d',
+    opacity: 0.7
+  },
+  instructionsContainer: {
+    padding: 10,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    marginTop: 5
+  },
+  instructions: {
+    textAlign: 'center',
+    color: '#7f8c8d',
+    fontSize: 14,
+    marginBottom: 5
+  },
+  controlButton: {
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 5,
+    width: '80%',
     alignItems: 'center',
   },
 });
