@@ -22,7 +22,7 @@ const SAFETY_THRESHOLDS = {
   DUTY_CYCLE_RATE: 0.6, // per second
   
   // RPM thresholds
-  RPM_MAX: 25000,
+  RPM_MAX: 10000,
   RPM_RATE: 10000, // RPM per second
   
   // Voltage thresholds (in V)
@@ -32,8 +32,8 @@ const SAFETY_THRESHOLDS = {
   
   // Startup allowances
   STARTUP_GRACE_PERIOD_MS: 1500, // 1.5 seconds of reduced sensitivity after significant RPM change
-  STARTUP_CURRENT_MULTIPLIER: 5.0, // Allow 5x normal current during startup 
-  STARTUP_RATE_MULTIPLIER: 5.0, // Allow 5x normal rate-of-change during startup
+  STARTUP_CURRENT_MULTIPLIER: 2.0, // Allow 2x normal current during startup 
+  STARTUP_RATE_MULTIPLIER: 10.0, // Allow 10x normal rate-of-change during startup
   
   // New: RPM change threshold that triggers a new startup phase
   RPM_CHANGE_THRESHOLD: 100, // RPM difference that triggers a new startup phase
@@ -226,30 +226,7 @@ export class VescControlManager {
     // Reset violations for this check
     const violations: string[] = [];
     
-    // Check temperature thresholds - no special handling for startup
-    this.checkThreshold(
-      'MOSFET Temperature', 
-      currentValues.tempMosfet,
-      this.previousValues.tempMosfet,
-      deltaTime,
-      SAFETY_THRESHOLDS.TEMP_MOSFET_MAX,
-      SAFETY_THRESHOLDS.TEMP_MOSFET_RATE,
-      '°C',
-      violations,
-      false // Temperature limits same during startup
-    );
-    
-    this.checkThreshold(
-      'Motor Temperature', 
-      currentValues.tempMotor,
-      this.previousValues.tempMotor,
-      deltaTime,
-      SAFETY_THRESHOLDS.TEMP_MOTOR_MAX,
-      SAFETY_THRESHOLDS.TEMP_MOTOR_RATE,
-      '°C',
-      violations,
-      false // Temperature limits same during startup
-    );
+  
     
     // Check current thresholds - adjust for startup
     this.checkThreshold(
@@ -261,8 +238,8 @@ export class VescControlManager {
         SAFETY_THRESHOLDS.CURRENT_MOTOR_MAX * SAFETY_THRESHOLDS.STARTUP_CURRENT_MULTIPLIER : 
         SAFETY_THRESHOLDS.CURRENT_MOTOR_MAX,
       inStartup ? 
-        SAFETY_THRESHOLDS.CURRENT_MOTOR_RATE * SAFETY_THRESHOLDS.STARTUP_RATE_MULTIPLIER : 
-        SAFETY_THRESHOLDS.CURRENT_MOTOR_RATE,
+        this.state.states.MaxMotorCurrentRate * SAFETY_THRESHOLDS.STARTUP_RATE_MULTIPLIER : 
+        this.state.states.MaxMotorCurrentRate,
       'A',
       violations,
       inStartup // Flag that we're using adjusted startup values
@@ -313,19 +290,6 @@ export class VescControlManager {
       inStartup
     );
     
-    // Check voltage range - no special handling for startup
-    this.checkRange(
-      'Voltage',
-      currentValues.voltage,
-      this.previousValues.voltage,
-      deltaTime,
-      SAFETY_THRESHOLDS.VOLTAGE_MIN,
-      SAFETY_THRESHOLDS.VOLTAGE_MAX,
-      SAFETY_THRESHOLDS.VOLTAGE_RATE,
-      'V',
-      violations,
-      false // Voltage limits same during startup
-    );
     
     // If violations occurred, track them
     if (violations.length > 0) {
@@ -340,7 +304,7 @@ export class VescControlManager {
       
       // If multiple consecutive violations, trigger emergency stop
       // Require more violations during startup to account for normal spikes
-      const requiredViolations = inStartup ? 6 : 2;
+      const requiredViolations = inStartup ? this.state.states.MaxSafetyCount + 4 : this.state.states.MaxSafetyCount + 4;
       
       if (this.consecutiveViolationCount >= requiredViolations) {
         this.triggerSafetyStop(violations);
@@ -496,8 +460,6 @@ export class VescControlManager {
       return { leftRPM: 0, rightRPM: 0 };
     }
     
-    // Max RPM 
-    const MAX_RPM = 3000;
     
     // Apply a small deadzone to prevent drift
     const deadzone = 0.1;
@@ -538,8 +500,8 @@ export class VescControlManager {
     if (rightMotor < 0 && Math.abs(x) < 0.1) rightMotor *= 0.5;  // 50% speed in reverse
     
     // Convert to RPM
-    const leftRPM = Math.round(leftMotor * MAX_RPM);
-    const rightRPM = Math.round(rightMotor * MAX_RPM);
+    const leftRPM = Math.round(leftMotor * this.state.states.MaxRPM);
+    const rightRPM = Math.round(rightMotor * this.state.states.MaxRPM);
     
     return { leftRPM, rightRPM };
   }
@@ -582,7 +544,7 @@ export class VescControlManager {
       // NEW: Check if this represents a significant change in RPM that would
       // warrant a new startup phase with higher current/change thresholds
       if (this.checkForSignificantRPMChange(leftRPM, rightRPM)) {
-        console.log("==Detected Significant RPM Change, starting startup phase")
+        console.log("==Detected Significant RPM Change, starting startup phase==")
         this.startNewStartupPhase();
       }
       

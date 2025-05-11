@@ -1,10 +1,31 @@
-# Add project specific ProGuard rules here.
-# By default, the flags in this file are appended to flags specified
-# in /usr/local/Cellar/android-sdk/24.3.3/tools/proguard/proguard-android.txt
-# You can edit the include path and order by changing the proguardFiles
-# directive in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# React Native Vosk
+-keep class org.vosk.** { *; }
+-dontwarn org.vosk.**
+-keep class com.alphacephei.vosk.** { *; }
+-dontwarn com.alphacephei.vosk.**
 
-# Add any project specific keep options here:
+# React Native BLE PLX
+-keep class com.polidea.reactnativeble.** { *; }
+-dontwarn com.polidea.reactnativeble.**
+
+# Vision Camera
+-keep class com.mrousavy.camera.** { *; }
+-dontwarn com.mrousavy.camera.**
+
+# Reanimated 
+-keep class com.swmansion.reanimated.** { *; }
+-dontwarn com.swmansion.reanimated.**
+
+# React Native General
+-keep class com.facebook.react.** { *; }
+-dontwarn com.facebook.react.**
+
+# React Native Worklets
+-keep class com.swmansion.worklets.** { *; }
+-dontwarn com.swmansion.worklets.**
+
+# Keep JavascriptCore which might be used by some libraries
+-keep class org.webkit.** { *; }
+-dontwarn org.webkit.**
+-keep class org.mozilla.javascript.** { *; }
+-dontwarn org.mozilla.javascript.**

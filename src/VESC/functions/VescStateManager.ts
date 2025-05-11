@@ -1,6 +1,5 @@
 // Updated VescStateManager with safety violations tracking
 import { useState } from 'react';
-import { VescValues, LogData } from '../types/VescTypes';
 
 export const useVescState = () => {
   // Device states
@@ -15,8 +14,11 @@ export const useVescState = () => {
   const [RightMotorRPM, setRightMotorRPM] = useState(0);
   const [LeftMotorRPM, setLeftMotorRPM] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
+  const [MaxRPM, setMaxRPM] = useState(3000);
+  const [MaxSafetyCount, setMaxSafetyCount] = useState(2);
   const [controlInterval, setControlInterval] = useState(null);
-  const [loggingInterval, setLoggingInterval] = useState(null);
+  const [MaxMotorCurrentRate, setMaxMotorCurrentRate] = useState(20);
+
   
   // Joystick states
   const [joystickX, setJoystickX] = useState(0);
@@ -57,6 +59,9 @@ export const useVescState = () => {
       targetCurrent,
       RightMotorRPM,
       LeftMotorRPM,
+      MaxRPM,
+      MaxSafetyCount,
+      MaxMotorCurrentRate,
       isRunning,
       isLogging,
       logData,
@@ -78,6 +83,9 @@ export const useVescState = () => {
       setTargetCurrent,
       setRightMotorRPM,
       setLeftMotorRPM,
+      setMaxRPM,
+      setMaxMotorCurrentRate,
+      setMaxSafetyCount,
       setIsRunning,
       setIsLogging,
       setLogData,
