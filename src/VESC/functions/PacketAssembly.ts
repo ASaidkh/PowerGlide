@@ -62,7 +62,7 @@ export class PacketAssembly {
       const crcBytes = `[${packet[packet.length - 3]}, ${packet[packet.length - 2]}]`; // CRC bytes
       const endByte = `[${packet[packet.length - 1]}]`; // End byte
       
-      console.log("Created Packet: ", packet);
+     // console.log("Created Packet: ", packet);
     
       return packet;
   }

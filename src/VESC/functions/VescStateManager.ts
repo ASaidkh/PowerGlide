@@ -1,5 +1,5 @@
+// Updated VescStateManager with safety violations tracking
 import { useState } from 'react';
-import { VescValues, LogData } from './types/VescTypes';
 
 export const useVescState = () => {
   // Device states
@@ -14,8 +14,15 @@ export const useVescState = () => {
   const [RightMotorRPM, setRightMotorRPM] = useState(0);
   const [LeftMotorRPM, setLeftMotorRPM] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
+  const [MaxRPM, setMaxRPM] = useState(3000);
+  const [MaxSafetyCount, setMaxSafetyCount] = useState(2);
   const [controlInterval, setControlInterval] = useState(null);
-  const [loggingInterval, setLoggingInterval] = useState(null);
+  const [MaxMotorCurrentRate, setMaxMotorCurrentRate] = useState(20);
+
+  
+  // Joystick states
+  const [joystickX, setJoystickX] = useState(0);
+  const [joystickY, setJoystickY] = useState(0);
 
   // Logging states
   const [isLogging, setIsLogging] = useState(false);
@@ -26,8 +33,22 @@ export const useVescState = () => {
     tempMosfet: 0,
     tempMotor: 0,
     currentMotor: 0,
-    // ... other values
+    currentInput: 0,
+    dutyCycleNow: 0,
+    rpm: 0,
+    voltage: 0,
+    ampHours: 0,
+    ampHoursCharged: 0,
+    wattHours: 0,
+    wattHoursCharged: 0,
+    tachometer: 0,
+    tachometerAbs: 0
   });
+  
+  // Safety states
+  const [safetyViolations, setSafetyViolations] = useState<string[]>([]);
+  const [safetyStopTime, setSafetyStopTime] = useState<Date | null>(null);
+  const [safetyAlertVisible, setSafetyAlertVisible] = useState(false);
 
   return {
     states: {
@@ -38,12 +59,21 @@ export const useVescState = () => {
       targetCurrent,
       RightMotorRPM,
       LeftMotorRPM,
+      MaxRPM,
+      MaxSafetyCount,
+      MaxMotorCurrentRate,
       isRunning,
       isLogging,
       logData,
       vescValues,
       pendingPacket,
-      controlInterval
+      controlInterval,
+      joystickX,
+      joystickY,
+      // Safety states
+      safetyViolations,
+      safetyStopTime,
+      safetyAlertVisible
     },
     setters: {
       setIsConnected,
@@ -53,12 +83,21 @@ export const useVescState = () => {
       setTargetCurrent,
       setRightMotorRPM,
       setLeftMotorRPM,
+      setMaxRPM,
+      setMaxMotorCurrentRate,
+      setMaxSafetyCount,
       setIsRunning,
       setIsLogging,
       setLogData,
       setVescValues,
       setPendingPacket,
-      setControlInterval
+      setControlInterval,
+      setJoystickX,
+      setJoystickY,
+      // Safety setters
+      setSafetyViolations,
+      setSafetyStopTime,
+      setSafetyAlertVisible
     }
   };
 };

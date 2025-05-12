@@ -121,13 +121,13 @@ export class VescConnectionManager {
     // Handle incoming data and accumulate it until a full packet is received
     private handleIncomingData(data: Buffer) {
         try {
-            console.log("Received data:", data);
+           // console.log("Received data:", data);
             
 
             // Accumulate incoming data
             this.buffer = Buffer.concat([this.buffer, data]);
-            console.log("Buffer Length:", this.buffer.length);
-            console.log("Buffer:", this.buffer);
+           // console.log("Buffer Length:", this.buffer.length);
+            //console.log("Buffer:", this.buffer);
 
             // Check if we have at least 20 bytes of data (full packet size)
             const expectedPacketSize = 79;
@@ -136,14 +136,14 @@ export class VescConnectionManager {
             if (this.buffer.length >= expectedPacketSize) {
                 // Extract the full 20-byte packet
                 const packet = this.buffer.slice(0, expectedPacketSize);
-                console.log(packet)
+               // console.log(packet)
                 // Remove the processed packet from the buffer
                 this.buffer = this.buffer.slice(expectedPacketSize);
 
                 // Now parse the full packet
                 try {
                     const values = PacketAssembly.parseVescValues(packet);
-                    console.log("Parsed Data:", values);
+                   // console.log("Parsed Data:", values);
                 } catch (error) {
                     console.error('Error parsing VESC values:', error);
                 }

@@ -1,4 +1,9 @@
 {
   "name": "PowerGlide",
-  "displayName": "PowerGlide"
+  "displayName": "PowerGlide",
+  "version": "1.0.0",
+  "android": {
+    "package": "com.powerglide.app",
+    "versionCode": 1
+  }
 }

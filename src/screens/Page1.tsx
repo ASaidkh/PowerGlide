@@ -1,22 +1,20 @@
 import React, { useEffect } from 'react';
 import { SafeAreaView, View, Alert } from 'react-native';
 import { Device } from 'react-native-ble-plx';
-import { styles } from './VESC/styles/vescStyles';
-import { VescConnectionManager } from './VESC/functions/VescConnectionManager';
-import { VescControlManager } from './VESC/functions/VescControlManager';
-import { VescControls } from './VESC/components/VescControls';
-import { ValuesDisplay } from './VESC/components/ValuesDisplay';
-import { LoggingControls } from './VESC/components/LoggingControls';
-import { ScanningView } from './VESC/components/ScanningView';
-import { Command } from '../App';
+import { styles } from '../VESC/styles/vescStyles';
+import { VescConnectionManager } from '../VESC/functions/VescConnectionManager';
+import { VescControlManager } from '../VESC/functions/VescControlManager';
+import { VescControls } from '../VESC/components/VescControls';
+import { ValuesDisplay } from '../VESC/components/ValuesDisplay';
+import { LoggingControls } from '../VESC/components/LoggingControls';
+import { ScanningView } from '../VESC/components/ScanningView';
+import { Command } from '../../App';
 
 interface Page1Props {
   vescState: any;
-  commandBuffer: Command[];
-  removeCommand: (index: number) => void;
 }
 
-const Page1: React.FC<Page1Props> = ({ vescState, commandBuffer, removeCommand }) => {
+const Page1: React.FC<Page1Props> = ({ vescState}) => {
   const connectionManager = React.useRef(new VescConnectionManager()).current;
   const [controlManager, setControlManager] = React.useState<VescControlManager | null>(null);
 
@@ -27,12 +25,7 @@ const Page1: React.FC<Page1Props> = ({ vescState, commandBuffer, removeCommand }
     }
   }, [vescState, controlManager]);
 
-  // Pass the command buffer to the control manager whenever it changes
-  useEffect(() => {
-    if (controlManager) {
-      controlManager.updateCommandBuffer(commandBuffer, removeCommand);
-    }
-  }, [commandBuffer, removeCommand, controlManager]);
+  
 
   useEffect(() => {
     return () => {
@@ -65,9 +58,7 @@ const Page1: React.FC<Page1Props> = ({ vescState, commandBuffer, removeCommand }
       const vescCommands = await connectionManager.connect(device);
       const newControlManager = new VescControlManager(
         vescCommands, 
-        vescState, 
-        commandBuffer, 
-        removeCommand
+        vescState
       );
       setControlManager(newControlManager);
       
@@ -109,15 +100,13 @@ const Page1: React.FC<Page1Props> = ({ vescState, commandBuffer, removeCommand }
         <View>
           <ValuesDisplay values={vescState.states.vescValues} />
           <VescControls 
-            dutyCycle={vescState.states.dutyCycle}
-            targetCurrent={vescState.states.targetCurrent}
-            RightMotorRPM={vescState.states.RightMotorRPM}
-            LeftMotorRPM={vescState.states.LeftMotorRPM}
             isRunning={vescState.states.isRunning}
-            onDutyCycleChange={vescState.setters.setDutyCycle}
-            onCurrentChange={vescState.setters.setTargetCurrent}
-            onRightMotorRPMchange={vescState.setters.setRightMotorRPM}
-            onLeftMotorRPMchange={vescState.setters.setLeftMotorRPM}
+            MaxSafetyCount = {vescState.states.MaxSafetyCount}
+            MaxRPM = {vescState.states.MaxRPM}
+            onMaxSafetyCountChange={vescState.setters.setMaxSafetyCount}
+            onMaxRPMChange={vescState.setters.setMaxRPM}
+            MaxMotorCurrentRate = {vescState.states.MaxMotorCurrentRate}
+            onMaxMotorCurrentRateChange = {vescState.setters.setMaxMotorCurrentRate}
             onStartStop={() => {
               if (vescState.states.isRunning) {
                 controlManager?.stopControl();
@@ -126,17 +115,7 @@ const Page1: React.FC<Page1Props> = ({ vescState, commandBuffer, removeCommand }
               }
             }}
           />
-          <LoggingControls 
-            isLogging={vescState.states.isLogging}
-            logData={vescState.states.logData}
-            onToggleLogging={() => {
-              if (!vescState.states.isLogging) {  // NOT isLogging
-                controlManager?.startLogging();
-              } else {
-                controlManager?.stopLogging();
-              }
-            }}
-          />
+         
         </View>
       )}
     </SafeAreaView>
