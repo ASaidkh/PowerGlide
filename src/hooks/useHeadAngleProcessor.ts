@@ -49,10 +49,10 @@ export function useHeadAngleProcessor(vescState) {
     setHeadAngle(finalAngle);
 
     const now = Date.now();
-    const commandCooldownMs = 3000; // Cooldown between commands (to avoid spamming)
+    const commandCooldownMs = 1000; // Cooldown between commands (to avoid spamming)
 
     if (nativePitch !== undefined && now - lastCommandTime.current > commandCooldownMs) {
-      if (nativePitch > 15 && headCommand !== 'Go') {
+      if (nativePitch > 10 && headCommand !== 'Go') {
         // Head tilted UP (look up) - GO
         console.log('Head up detected! Sending "go" command.');
         vescState.setters.setJoystickX(0);
@@ -60,7 +60,7 @@ export function useHeadAngleProcessor(vescState) {
         setHeadCommand('Go');
         lastCommandTime.current = now;
     
-      } else if (nativePitch < -15 && headCommand !== 'Stop') {
+      } else if (nativePitch < -10 && headCommand !== 'Stop') {
         // Head tilted DOWN (look down) - STOP
         console.log('Head down detected! Sending "stop" command.');
         vescState.setters.setJoystickX(0);
