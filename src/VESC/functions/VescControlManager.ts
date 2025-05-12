@@ -33,10 +33,10 @@ const SAFETY_THRESHOLDS = {
   // Startup allowances
   STARTUP_GRACE_PERIOD_MS: 1500, // 1.5 seconds of reduced sensitivity after significant RPM change
   STARTUP_CURRENT_MULTIPLIER: 2.0, // Allow 2x normal current during startup 
-  STARTUP_RATE_MULTIPLIER: 10.0, // Allow 10x normal rate-of-change during startup
+  STARTUP_RATE_MULTIPLIER: 2.0, // Allow 10x normal rate-of-change during startup
   
   // New: RPM change threshold that triggers a new startup phase
-  RPM_CHANGE_THRESHOLD: 100, // RPM difference that triggers a new startup phase
+  RPM_CHANGE_THRESHOLD: 200, // RPM difference that triggers a new startup phase
   RPM_DIRECTION_CHANGE_MULTIPLIER: 0.5, // Lower threshold for direction changes
 };
 
@@ -227,7 +227,7 @@ export class VescControlManager {
     const violations: string[] = [];
     
   
-    
+
     // Check current thresholds - adjust for startup
     this.checkThreshold(
       'Motor Current', 
@@ -296,16 +296,19 @@ export class VescControlManager {
       this.safetyViolations = violations;
       this.consecutiveViolationCount++;
       
-      // Log violations with additional startup info
-      console.warn(
-        `Safety violations detected (${this.consecutiveViolationCount})${inStartup ? ' [STARTUP PHASE]' : ''}:`, 
-        violations.join(', ')
-      );
+   
       
       // If multiple consecutive violations, trigger emergency stop
       // Require more violations during startup to account for normal spikes
-      const requiredViolations = inStartup ? this.state.states.MaxSafetyCount + 4 : this.state.states.MaxSafetyCount + 4;
+      const requiredViolations = inStartup ? this.state.states.MaxSafetyCount + 4 : this.state.states.MaxSafetyCount;
       
+    // Log violations with additional startup info
+      console.warn(
+        `Safety Violation Threshold: ${requiredViolations}\n
+        Safety violations detected (${this.consecutiveViolationCount})${inStartup ? ' [STARTUP PHASE]' : ''}:`, 
+        violations.join(', ')
+      );
+
       if (this.consecutiveViolationCount >= requiredViolations) {
         this.triggerSafetyStop(violations);
       }
@@ -346,9 +349,14 @@ export class VescControlManager {
       return;
     }
     
+
+
     // Check for rate of change violation
     if (rateThreshold !== null) {
       const changeRate = Math.abs(currentValue - previousValue) / deltaTime;
+
+          console.log(`${paramName} rate: ${changeRate.toFixed(2)}${unit}/s. Threshold: ${rateThreshold.toFixed(2)}${unit}/s`); // Temporary debug remove
+
       if (changeRate > rateThreshold) {
         violations.push(
           `${paramName} changing too rapidly ${isStartupValue ? '[STARTUP]' : ''} ` +
