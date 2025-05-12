@@ -37,7 +37,7 @@ export const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -100,15 +100,15 @@ export const styles = StyleSheet.create({
   controlButton: {
     backgroundColor: '#2980b9',
     padding: 10,
-    borderRadius: 8,
-    width: '48%',
+    borderRadius: 20,
+    width: '100%',
     elevation: 2,
     marginVertical: 5,
   },
   controlGroup: {
     width: 250,
     height: '10%',
-    marginBottom: 50,
+    marginBottom: 20,
   },
   controlLabel: {
     fontSize: 16,
@@ -117,7 +117,7 @@ export const styles = StyleSheet.create({
   },
   slider: {
     width: '100%',
-    height: 50,
+    height: 20,
   },
   inputRow: {
     flexDirection: 'row',
