@@ -42,6 +42,16 @@ export const VescControls = ({
       </View>
     */}
     
+    
+      <TouchableOpacity 
+        style={[styles.controlButton, isRunning ? styles.stopButton : styles.goButton]}
+        onPress={onStartStop}
+      >
+        <Text style={styles.buttonText}>
+          {isRunning ? 'STOP' : 'GO'}
+        </Text>
+      </TouchableOpacity>
+      
       <View style={styles.controlGroup}>
         <Text style={{ color: 'black' }}>Max Safety Violation Count: {MaxSafetyCount.toFixed(1)} </Text>
         <Slider    style = {styles.slider}
@@ -72,21 +82,13 @@ export const VescControls = ({
           value={MaxRPM}
           onValueChange={onMaxRPMChange}
           minimumValue={1}
-          maximumValue={10000}
+          maximumValue={5000}
           step={1}
          
         />
       </View>
       
 
-      <TouchableOpacity 
-        style={[styles.controlButton, isRunning ? styles.stopButton : styles.goButton]}
-        onPress={onStartStop}
-      >
-        <Text style={styles.buttonText}>
-          {isRunning ? 'STOP' : 'GO'}
-        </Text>
-      </TouchableOpacity>
 
 
     </View>

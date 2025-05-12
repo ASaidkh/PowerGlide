@@ -564,7 +564,7 @@ export class VescControlManager {
       if (!this.isStopped) {
         // Send commands to VESC
         this.commands.setRpmRight(this.canID, leftRPM);
-        this.commands.setRpmLeft(rightRPM);
+        setTimeout(this.commands.setRpmLeft(rightRPM), 50);
       } else {
         // Ensure motors are stopped if isStopped is true
         this.commands.setRpmRight(this.canID, 0);
