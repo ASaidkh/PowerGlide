@@ -78,39 +78,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#121212',
+    backgroundColor: '#121212',        // keep dark background
     justifyContent: 'center',
   },
   heading: {
     fontSize: 24,
-    color: 'white',
+    color: '#F0E442',                  // bright yellow for high contrast headings
     marginBottom: 20,
     fontWeight: 'bold',
   },
   label: {
     fontSize: 16,
-    color: 'lightgray',
+    color: '#FFFFFF',                  // neutral gray, easier to read than lightgray
     marginBottom: 10,
   },
   input: {
-    backgroundColor: '#2c2c2c',
-    color: 'white',
+    backgroundColor: '#2c2c2c',        // keep dark input bg
+    color: '#FFFFFF',                  // white text for max contrast
     padding: 10,
     borderRadius: 8,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#56B4E9',            // sky blue border for input to stand out
   },
   button: {
-    backgroundColor: '#00aaff',
+    backgroundColor: '#0072B2',        // strong blue (colorblind-friendly)
     padding: 12,
     borderRadius: 8,
   },
   buttonText: {
-    color: 'white',
+    color: '#FFFFFF',                  // white text
     textAlign: 'center',
     fontWeight: '600',
   },
   deleteButton: {
-    backgroundColor: 'red',
+    backgroundColor: '#CC79A7',        // reddish purple instead of harsh red
     marginTop: 10,
   },
 });

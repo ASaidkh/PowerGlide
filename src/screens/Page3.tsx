@@ -192,98 +192,98 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: '#f5f5f5',
-    padding: 20
+    backgroundColor: '#FFFFFF',           // switched to white background for max contrast
+    padding: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 10
+    color: '#0072B2',                     // colorblind-friendly blue
+    marginBottom: 10,
   },
   connectionStatus: {
     padding: 10,
     borderRadius: 5,
-    marginBottom: 10
+    marginBottom: 10,
   },
   connectionText: {
     fontWeight: 'bold',
-    fontSize: 16
+    fontSize: 16,
   },
   connected: {
-    color: '#2ecc71'
+    color: '#2ECC71',                    // green (safe and clear)
   },
   disconnected: {
-    color: '#e74c3c'
+    color: '#CC79A7',                    // reddish purple (instead of red)
   },
   valueContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
     padding: 10,
-    backgroundColor: 'white',
+    backgroundColor: '#F0E442',           // bright yellow background for distinction
     borderRadius: 10,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4
+    shadowRadius: 4,
   },
   valueText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#3498db',
-    padding: 5
+    color: '#0072B2',                    // blue text for values
+    padding: 5,
   },
   controlButton: {
     padding: 15,
     borderRadius: 10,
     width: '80%',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   activeButton: {
-    backgroundColor: '#2ecc71'
+    backgroundColor: '#2ECC71',          // green button
   },
   inactiveButton: {
-    backgroundColor: '#95a5a6'
+    backgroundColor: '#999999',          // medium gray, distinct from disabled
   },
   disabledButton: {
-    backgroundColor: '#bdc3c7'
+    backgroundColor: '#CCCCCC',          // lighter gray for disabled
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFFFFF',                    // white text for contrast
     fontSize: 18,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
   joystickContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 20
+    marginVertical: 20,
   },
   joystickBase: {
-    backgroundColor: '#ecf0f1',
+    backgroundColor: '#ECF0F1',          // very light gray
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   joystickHandle: {
-    backgroundColor: '#2980b9',
-    position: 'absolute'
+    backgroundColor: '#0072B2',          // blue handle for clarity
+    position: 'absolute',
   },
   joystickDisabled: {
-    backgroundColor: '#dcdde1'
+    backgroundColor: '#DCDDE1',          // light gray disabled state
   },
   handleDisabled: {
-    backgroundColor: '#7f8c8d'
+    backgroundColor: '#7F8C8D',          // muted gray handle disabled
   },
   instructionsContainer: {
     alignItems: 'center',
-    padding: 10
+    padding: 10,
   },
   instructions: {
     fontSize: 14,
-    color: '#7f8c8d',
-    marginVertical: 2
-  }
+    color: '#7F8C8D',                    // gray instructions text
+    marginVertical: 2,
+  },
 });
 
 export default Page3;

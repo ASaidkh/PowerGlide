@@ -3,18 +3,18 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: 'black',
-    justifyContent: 'flex-start',  // Keep elements at the top of the screen
+    backgroundColor: '#FFFFFF',    // white background (instead of black)
+    justifyContent: 'flex-start',
     alignItems: 'center',
   },
   button: {
     padding: 10,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#D55E00',   // orange (colorblind-friendly)
     borderRadius: 5,
     margin: 20,
   },
   buttonText: {
-    color: 'white',
+    color: '#FFFFFF',             // white text on button for contrast
     fontSize: 18,
   },
   icon: {
@@ -22,30 +22,30 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    color: 'white',
+    color: '#0072B2',             // blue for titles, colorblind-friendly
   },
   topCenterStatusContainer: {
     position: 'absolute',
-    top: 50,  // Adjust this value to move it closer to the top
+    top: 50,
     left: 0,
     right: 0,
     alignItems: 'center',
     zIndex: 10,
   },
   headDirectionTop: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0, 114, 178, 0.7)',  // semi-transparent blue
     padding: 10,
     borderRadius: 5,
     minWidth: 120,
     marginBottom: 10,
   },
   headDirectionText: {
-    color: 'white',
+    color: '#FFFFFF',            // white text
     fontSize: 18,
     fontWeight: 'bold',
   },
   headAngleText: {
-    color: '#00BFFF',
+    color: '#009E73',            // bluish green
     fontSize: 16,
     marginTop: 4,
   },
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   angleBar: {
     width: '100%',
     height: 12,
-    backgroundColor: '#444',
+    backgroundColor: '#999999',  // neutral gray
     borderRadius: 6,
     position: 'relative',
   },
@@ -65,12 +65,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 12,
     height: 24,
-    backgroundColor: '#ff5733',
+    backgroundColor: '#E69F00',  // warm orange
     borderRadius: 6,
     top: -6,
     marginLeft: -6,
     borderWidth: 1,
-    borderColor: 'white',
+    borderColor: '#000000',       // black border for contrast
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     top: 0,
     width: 2,
     height: 12,
-    backgroundColor: '#fff',
+    backgroundColor: '#000000',   // black ticks
     opacity: 0.5,
   },
   angleLabels: {
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   angleLabel: {
-    color: 'white',
+    color: '#000000',             // black labels
     fontSize: 14,
   },
   controlsContainer: {
@@ -106,14 +106,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 10,
-    backgroundColor: '#1E90FF',
+    backgroundColor: '#0072B2',  // blue for buttons
     marginHorizontal: 10,
   },
   cameraOffContainer: {
     flex: 1,
-    justifyContent: 'center',  // Center this content
-    alignItems: 'center',  // Center horizontally
-    position: 'absolute',  // Keep it on top of everything else
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
