@@ -4,6 +4,7 @@ import { useFrameProcessor } from 'react-native-vision-camera';
 import { useFaceDetector } from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core';
 import OneEuroFilter from '../utils/OneEuroFilter';
+import KalmanFilter from '../utils/KalmanFilter';
 import { calculateAngleFromLandmarks, fuseAngleEstimates } from '../utils/FaceUtils';
 
 export function useHeadAngleProcessor(vescState) {
@@ -18,6 +19,7 @@ export function useHeadAngleProcessor(vescState) {
   const lastCommandTime = useRef(0);
 
   const angleFilter = useRef(new OneEuroFilter()).current;
+  const kalmanFilter = useRef(new KalmanFilter(0.05, 3)).current; // Measurement noise R, process noise Q
 
   const { detectFaces } = useFaceDetector({
     mode: 'accurate',
@@ -38,30 +40,34 @@ export function useHeadAngleProcessor(vescState) {
 
     const landmarkAngle = calculateAngleFromLandmarks(face);
     const nativeYaw = face.yawAngle;
-    const nativePitch = face.pitchAngle; // <-- ADD pitch angle detection (up/down)
+    const nativePitch = face.pitchAngle;
 
     const fusedAngle = fuseAngleEstimates(nativeYaw, landmarkAngle, positionAngle);
 
     lastRawAngle.current = fusedAngle;
-    const smoothed = angleFilter.filter(fusedAngle);
-    const finalAngle = parseFloat(smoothed.toFixed(1));
+
+    // Use Kalman only:
+    const kalmanSmoothed = kalmanFilter.filter(fusedAngle);
+    const finalAngle = parseFloat(kalmanSmoothed.toFixed(1));
+
+    // Optional: Combine both filters for even smoother output
+    // const euroSmoothed = angleFilter.filter(fusedAngle);
+    // const kalmanSmoothed = kalmanFilter.filter(euroSmoothed);
+    // const finalAngle = parseFloat(kalmanSmoothed.toFixed(1));
 
     setHeadAngle(finalAngle);
 
     const now = Date.now();
-    const commandCooldownMs = 1000; // Cooldown between commands (to avoid spamming)
+    const commandCooldownMs = 1000;
 
     if (nativePitch !== undefined && now - lastCommandTime.current > commandCooldownMs) {
       if (nativePitch > 10 && headCommand !== 'Go') {
-        // Head tilted UP (look up) - GO
         console.log('Head up detected! Sending "go" command.');
         vescState.setters.setJoystickX(0);
         vescState.setters.setJoystickY(0.5);
         setHeadCommand('Go');
         lastCommandTime.current = now;
-    
       } else if (nativePitch < -10 && headCommand !== 'Stop') {
-        // Head tilted DOWN (look down) - STOP
         console.log('Head down detected! Sending "stop" command.');
         vescState.setters.setJoystickX(0);
         vescState.setters.setJoystickY(0);
@@ -89,7 +95,7 @@ export function useHeadAngleProcessor(vescState) {
 
     const command = {
       x: !isNeutral ? -curved * 0.8 : 0,
-      y: !isNeutral && Math.abs(vescState.states.joystickY) < 0.1 ? 0.3 : vescState.states.joystickY
+      y: !isNeutral && Math.abs(vescState.states.joystickY) < 0.1 ? 0.3 : vescState.states.joystickY,
     };
 
     const timeSinceLastLog = now - lastLoggedTime.current;
@@ -130,6 +136,6 @@ export function useHeadAngleProcessor(vescState) {
     headDirection,
     headAngle,
     frameProcessor,
-    headCommand, // ✅ now returning head motion based command
+    headCommand,
   };
 }

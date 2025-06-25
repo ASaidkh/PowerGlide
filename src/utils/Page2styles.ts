@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   headAngleText: {
-    color: '#009E73',            // bluish green
+    color: '#F0E442',            // bluish green
     fontSize: 16,
     marginTop: 4,
   },
