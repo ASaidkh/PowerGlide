@@ -30,7 +30,7 @@ const requestCallPermission = async (): Promise<boolean> => {
       return false;
     }
   }
-  return true; // iOS handles permission at runtime via Linking
+  return true;
 };
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);

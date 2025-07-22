@@ -62,7 +62,7 @@ export function useHeadAngleProcessor(vescState) {
     const now = Date.now();
     const cooldown = 1000;
 
-    // Head tilt → Go/Stop commands
+    // Head up/down -> Go/Stop commands
     if (nativePitch !== undefined && now - lastCommandTime.current > cooldown) {
       if (nativePitch > 10 && headCommand !== 'Go') {
         vescState.setters.setJoystickX(0);
