@@ -514,103 +514,117 @@ export class VescControlManager {
     return { leftRPM, rightRPM };
   }
 
-  startControl = () => {
+  sendSynchronizedMotorCommands = async (leftRPM, rightRPM) => {
+    try {
+      // Adjust UART delay based on calibration
+      await Promise.all([
+        this.commands.setRpmRight(this.canID, leftRPM),
+        new Promise(resolve => setTimeout(async () => {
+          await this.commands.setRpmLeft(rightRPM);
+          resolve();
+        }, this.canDelayCompensation || 20)) // fallback to 20ms if not calibrated
+      ]);
+    } catch (err) {
+      console.error("Synchronized motor command failed:", err);
+    }
+  };
+
+  sendSynchronizedStopCommands = async () => {
+    try {
+      await Promise.all([
+        this.commands.setRpmRight(this.canID, 0),
+        this.commands.setRpmLeft(0)
+      ]);
+    } catch (err) {
+      console.error("Failed to send stop commands:", err);
+    }
+  };
+
+  startControl = async () => {
     const { setControlInterval, setIsRunning } = this.state.setters;
 
-    // Clear any existing interval first
+    // Clear existing interval
     if (this.state.states.controlInterval) {
       clearInterval(this.state.states.controlInterval);
     }
-    
+
+    // Calibrate CAN delay once
+    if (!this.isDelayCalibrated) {
+      await this.calibrateCANDelay();
+    }
+
     // Update internal state
     this.isStopped = false;
-    
-    // Reset safety state
     this.safetyAlertShown = false;
-    
-    // Start the safety monitoring system with startup phase
+
+    // Start safety monitoring and control loop
     this.startSafetyMonitoring();
-    
-    // Update global state
     setIsRunning(true);
 
-    // Set new interval for motor control
-    const newInterval = setInterval(() => {
-      // Add safety check - if we were stopped externally, respect that
+    const controlLoop = async () => {
       if (this.isStopped) {
-        this.commands.setRpmRight(this.canID, 0);
-        this.commands.setRpmLeft(0);
+        await this.sendSynchronizedStopCommands();
         return;
       }
-      
-      // Get joystick values from global state
+
       const { joystickX, joystickY } = this.state.states;
-      
-      // Calculate motor values using the new function
       const { leftRPM, rightRPM } = this.calculateMotorValues(joystickX, joystickY);
-      
-      // NEW: Check if this represents a significant change in RPM that would
-      // warrant a new startup phase with higher current/change thresholds
+
       if (this.checkForSignificantRPMChange(leftRPM, rightRPM)) {
-        console.log("==Detected Significant RPM Change, starting startup phase==")
+        console.log("==Detected Significant RPM Change, starting startup phase==");
         this.startNewStartupPhase();
       }
-      
-      // Update UI state with calculated values
+
       this.state.setters.setLeftMotorRPM(leftRPM);
       this.state.setters.setRightMotorRPM(rightRPM);
-      
-      // Only send non-zero commands if not stopped
-      if (!this.isStopped) {
-        // Send commands to VESC
-        this.commands.setRpmRight(this.canID, leftRPM);
-        setTimeout(this.commands.setRpmLeft(rightRPM), 50);
-      } else {
-        // Ensure motors are stopped if isStopped is true
-        this.commands.setRpmRight(this.canID, 0);
-        this.commands.setRpmLeft(0);
-      }
-    }, 200);
 
-    // Store the new interval and update the running state
-    setControlInterval(newInterval);
-    
-    console.log("Motor control started (with startup grace period)");
+      if (!this.isStopped) {
+        await this.sendSynchronizedMotorCommands(leftRPM, rightRPM);
+      } else {
+        await this.sendSynchronizedStopCommands();
+      }
+
+      // Reschedule the loop
+      if (!this.isStopped) {
+        this.controlTimeout = setTimeout(controlLoop, 100);
+        this.state.setters.setControlInterval(this.controlTimeout);
+      }
+    };
+
+    // Start first loop
+    controlLoop();
+
+    console.log(`Motor control started with ${this.canDelayCompensation}ms CAN delay compensation`);
   };
+
 
   stopControl = () => {
     const { setControlInterval, setIsRunning } = this.state.setters;
 
-    // Set internal stopped state FIRST
     this.isStopped = true;
-    
-    // Stop safety monitoring
     this.stopSafetyMonitoring();
-    
-    // IMPORTANT: Immediately send stop commands to the motors
-    // Don't wait for the next interval or state updates
+
+    // Immediate motor stop
     this.commands.setRpmRight(this.canID, 0);
     this.commands.setRpmLeft(0);
-    
-    // Reset joystick values
+
+    // Reset joystick and display states
     this.state.setters.setJoystickX(0);
     this.state.setters.setJoystickY(0);
-    
-    // Reset RPM display values
     this.state.setters.setLeftMotorRPM(0);
     this.state.setters.setRightMotorRPM(0);
 
-    // Clear the interval if it exists
-    if (this.state.states.controlInterval) {
-      clearInterval(this.state.states.controlInterval);
+    // Clear control timeout
+    if (this.controlTimeout) {
+      clearTimeout(this.controlTimeout);
+      this.controlTimeout = null;
     }
 
-    // Update global state
     setControlInterval(null);
     setIsRunning(false);
-    
     console.log("Motor control stopped - motors set to 0 RPM");
   };
+
 
   // Start continuous logging of VESC values
   startContinuousLogging = () => {
