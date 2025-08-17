@@ -1,26 +1,23 @@
 // hooks/useHeadAngleProcessor.ts
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFrameProcessor } from 'react-native-vision-camera';
 import { useFaceDetector } from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core';
 import OneEuroFilter from '../utils/OneEuroFilter';
-import KalmanFilter from '../utils/KalmanFilter';
-import { PIDController } from '../utils/PIDController';
 import { calculateAngleFromLandmarks, fuseAngleEstimates } from '../utils/FaceUtils';
 
 export function useHeadAngleProcessor(vescState) {
   const [headDirection, setHeadDirection] = useState('Neutral');
   const [headAngle, setHeadAngle] = useState(0);
-  const [headCommand, setHeadCommand] = useState<'None'|'Go'|'Stop'>('None');
+  const [headCommand, setHeadCommand] = useState<'None' | 'Go' | 'Stop'>('None');
 
   const lastProcessedTime = useRef(0);
+  const lastRawAngle = useRef(0);
   const lastLoggedTime = useRef(0);
   const wasNeutral = useRef(true);
   const lastCommandTime = useRef(0);
 
   const angleFilter = useRef(new OneEuroFilter()).current;
-  const kalmanFilter = useRef(new KalmanFilter(0.05, 3)).current;
-  const pidX = useRef(new PIDController(0.5, 0.05, 0.1, -1, 1)).current;
 
   const { detectFaces } = useFaceDetector({
     mode: 'accurate',
@@ -29,96 +26,106 @@ export function useHeadAngleProcessor(vescState) {
     tracking: true,
   });
 
-  useEffect(() => {
-    pidX.setSetpoint(0); // target: centerX → offset = 0
-  }, [pidX]);
+  const handleDetectedFaces = useCallback((detectedFaces, width, height) => {
+    if (detectedFaces.length === 0) return;
 
-  const handleDetectedFaces = useCallback((faces, width, height) => {
-    if (faces.length === 0) return;
-
-    const face = faces[0];
+    const face = detectedFaces[0];
     const { x, width: w } = face.bounds;
     const centerX = width / 2;
     const faceCenter = x + w / 2;
-
-    // Raw offset from center (-1 to 1)
     const offset = (faceCenter - centerX) / (width / 2);
+    const positionAngle = -Math.sign(offset) * Math.pow(Math.abs(offset), 0.8) * 50;
 
-    // PID correction smooths positional jitter
-    const pidOutput = pidX.update(offset);
-    const positionAngle = pidOutput * 50; // scale to degrees
-
-    // Angle fusion
     const landmarkAngle = calculateAngleFromLandmarks(face);
     const nativeYaw = face.yawAngle;
-    const nativePitch = face.pitchAngle;
+    const nativePitch = face.pitchAngle; // <-- ADD pitch angle detection (up/down)
+
     const fusedAngle = fuseAngleEstimates(nativeYaw, landmarkAngle, positionAngle);
 
-    // Kalman smoothing
-    const kalmanSmoothed = kalmanFilter.filter(fusedAngle);
-    const finalAngle = parseFloat(kalmanSmoothed.toFixed(1));
+    lastRawAngle.current = fusedAngle;
+    const smoothed = angleFilter.filter(fusedAngle);
+    const finalAngle = parseFloat(smoothed.toFixed(1));
+
     setHeadAngle(finalAngle);
 
     const now = Date.now();
-    const cooldown = 1000;
+    const commandCooldownMs = 3000; // Cooldown between commands (to avoid spamming)
 
-    // Head up/down -> Go/Stop commands
-    if (nativePitch !== undefined && now - lastCommandTime.current > cooldown) {
-      if (nativePitch > 10 && headCommand !== 'Go') {
+    if (nativePitch !== undefined && now - lastCommandTime.current > commandCooldownMs) {
+      let commandStartTime = Date.now(); // Start timing
+
+      if (nativePitch > 15 && headCommand !== 'Go') {
+        console.log('Head up detected!');
+        // Bluetooth send begins
         vescState.setters.setJoystickX(0);
-        vescState.setters.setJoystickY(0.5);
+        vescState.setters.setJoystickY(1);
+        // Bluetooth send ends
+        let commandEndTime = Date.now();
+        console.log(`"Go" command sent. Time taken: ${commandEndTime - commandStartTime} ms`);
+
         setHeadCommand('Go');
         lastCommandTime.current = now;
-      } else if (nativePitch < -10 && headCommand !== 'Stop') {
+
+      } else if (nativePitch < -15 && headCommand !== 'Stop') {
+        console.log('Head down detected!');
+        // Bluetooth send begins
         vescState.setters.setJoystickX(0);
         vescState.setters.setJoystickY(0);
+        // Bluetooth send ends
+        let commandEndTime = Date.now();
+        console.log(`"Stop" command sent. Time taken: ${commandEndTime - commandStartTime} ms`);
+
         setHeadCommand('Stop');
         lastCommandTime.current = now;
       }
     }
 
-    const neutralThreshold = nativeYaw !== undefined ? 8 : landmarkAngle != null ? 6 : 5;
+    const neutralThreshold = nativeYaw !== undefined ? 8 : landmarkAngle !== null ? 6 : 5;
     const isNeutral = Math.abs(finalAngle) < neutralThreshold;
 
     let direction = 'Neutral';
     if (!isNeutral) {
-      direction = finalAngle > 30 ? 'Far Left'
-                : finalAngle > 15 ? 'Left'
-                : finalAngle < -30 ? 'Far Right'
-                : finalAngle < -15 ? 'Right'
-                : finalAngle > neutralThreshold ? 'Slight Left'
-                : finalAngle < -neutralThreshold ? 'Slight Right'
-                : 'Neutral';
+      if (finalAngle > 30) direction = 'Far Left';
+      else if (finalAngle > 15) direction = 'Left';
+      else if (finalAngle > neutralThreshold) direction = 'Slight Left';
+      else if (finalAngle < -30) direction = 'Far Right';
+      else if (finalAngle < -15) direction = 'Right';
+      else if (finalAngle < -neutralThreshold) direction = 'Slight Right';
     }
 
     const maxAngle = 40;
-    const norm = Math.max(-1, Math.min(1, finalAngle / maxAngle));
-    const curved = Math.sign(norm) * Math.pow(Math.abs(norm), 1.5);
-    const cmd = {
+    const normalized = Math.max(-1, Math.min(1, finalAngle / maxAngle));
+    const curved = Math.sign(normalized) * Math.pow(Math.abs(normalized), 1.5);
+
+    const command = {
       x: !isNeutral ? -curved * 0.8 : 0,
-      y: !isNeutral && Math.abs(vescState.states.joystickY) < 0.1 ? 0.3 : vescState.states.joystickY,
+      y: !isNeutral && Math.abs(vescState.states.joystickY) < 0.1 ? 0.3 : vescState.states.joystickY
     };
 
-    const sinceLog = now - lastLoggedTime.current;
-    const dirChanged = direction !== headDirection;
+    const timeSinceLastLog = now - lastLoggedTime.current;
+    const changed = direction !== headDirection;
     const toNeutral = !wasNeutral.current && isNeutral;
     const fromNeutral = wasNeutral.current && !isNeutral;
 
-    if (dirChanged || sinceLog >= 15000 || toNeutral || fromNeutral) {
+    if (changed || timeSinceLastLog >= 15000 || toNeutral || fromNeutral) {
       setHeadDirection(direction);
       lastLoggedTime.current = now;
       wasNeutral.current = isNeutral;
 
       if (!isNeutral) {
-        vescState.setters.setJoystickX(cmd.x);
-        if (cmd.y !== 0 && Math.abs(vescState.states.joystickY) < 0.1) {
-          vescState.setters.setJoystickY(cmd.y);
+        const commandStartTime = Date.now();
+
+        vescState.setters.setJoystickX(command.x);
+        if (command.y !== 0 && Math.abs(vescState.states.joystickY) < 0.1) {
+          vescState.setters.setJoystickY(command.y);
         }
+        const commandEndTime = Date.now();
+        console.log(`${direction} command sent. Time taken: ${commandEndTime - commandStartTime} ms`);
       } else if (toNeutral) {
         vescState.setters.setJoystickX(0);
       }
     }
-  }, [vescState, headAngle, headCommand, pidX, headDirection]);
+  }, [vescState, headDirection]);
 
   const workletHandler = Worklets.createRunOnJS((faces, w, h) => {
     const now = Date.now();
@@ -127,11 +134,16 @@ export function useHeadAngleProcessor(vescState) {
     handleDetectedFaces(faces, w, h);
   });
 
-  const frameProcessor = useFrameProcessor(frame => {
+  const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
     const faces = detectFaces(frame);
     workletHandler(faces, frame.width, frame.height);
-  }, [handleDetectedFaces]);
+  }, [workletHandler]);
 
-  return { headDirection, headAngle, headCommand, frameProcessor };
+  return {
+    headDirection,
+    headAngle,
+    frameProcessor,
+    headCommand, // ✅ now returning head motion based command
+  };
 }
